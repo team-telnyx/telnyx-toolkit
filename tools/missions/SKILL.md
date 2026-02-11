@@ -1029,10 +1029,10 @@ Calls MUST run serially. Each call's strategy depends on previous results. You'r
 # Flow:
 # 1. Create assistant with dynamic variable placeholders in instructions:
 #    "Ask for a quote for roof repair on a 2000 sq ft home. Get price, timeline, warranty.
-#     {{#if best_quote}}
+#     {{#best_quote}}
 #     CONTEXT: You have received a quote of {{best_quote}} from {{best_company}}.
 #     Mention this if the price seems high. Ask if they can match or beat it.
-#     {{/if}}"
+#     {{/best_quote}}"
 #    Set dynamic_variables: {"best_quote": null, "best_company": null}
 
 # 2. Call roofer 1 (no leverage yet — best_quote is null, so that section is skipped)
@@ -1063,10 +1063,10 @@ Calls MUST run serially. Each call's strategy depends on previous results. You'r
 
 # Assistant instructions use dynamic variable placeholders:
 #   "You are calling about auto insurance for a 2022 Toyota Camry.
-#    {{#if best_quote}}
+#    {{#best_quote}}
 #    LEVERAGE: The best quote so far is {{best_quote}}/month
 #    from {{best_company}}. Mention this and ask them to beat it.
-#    {{/if}}"
+#    {{/best_quote}}"
 
 # Sequential pattern — pass dynamic variables per call:
 # Call 1 (baseline): no leverage vars → "What's your rate for [coverage details]?"
@@ -1239,11 +1239,11 @@ Use **dynamic variables** passed via the scheduled events API to inject context 
 ```bash
 # Assistant instructions use placeholders:
 #   "You are calling to get a quote for roof repair on a 2000 sq ft home.
-#    {{#if best_quote}}
+#    {{#best_quote}}
 #    IMPORTANT CONTEXT: Another contractor has quoted {{best_quote}}.
 #    If this contractor quotes higher, mention you have a better offer and ask if
 #    they can match or beat it. Be professional but firm.
-#    {{/if}}"
+#    {{/best_quote}}"
 
 # After getting a quote of $350 from call 1, pass it as a dynamic variable on call 2:
 python telnyx_api.py schedule-call <assistant_id> "+1555..." "+1555..." "<time>" <mission_id> <run_id> '{"best_quote": "$350", "best_company": "ABC Roofing"}'
