@@ -14,7 +14,7 @@ export TELNYX_API_KEY="your_key_here"
 ### Install via ClawdHub
 
 ```bash
-clawdhub install telnyx-toolkit
+clawhub install telnyx-toolkit
 ```
 
 ---
