@@ -818,7 +818,7 @@ python telnyx_api.py list-phones --available
 - You need a different combination of insights → **create a new insight group**
 - The existing resource is "close but needs tweaks" → **create new, don't modify the existing one**
 
-**The only exception** to the "don't modify" rule is `update-assistant` for **dynamic instructions within a single mission run** (e.g., Class 3 Sequential Negotiation, where you inject context between calls on an assistant YOU created for that mission). Never modify an assistant you didn't create in the current mission.
+**For dynamic context between calls** (e.g., Class 3 Sequential Negotiation, where you inject "best quote so far" into each call), use **dynamic variables passed via the scheduled events API** rather than modifying the assistant. Define variable placeholders in the assistant's instructions (e.g., `{{best_quote}}`) and pass the values at schedule time. This keeps the assistant immutable while varying context per call.
 
 1. **Assistants:** Search for existing assistants. If one matches your needs exactly (instructions, tools, voice, model), reuse it. If it's close but not quite right, **create a new one** — don't modify the existing one:
    ```bash
@@ -1004,11 +1004,11 @@ Calls MUST run serially. Each call's strategy depends on previous results. You'r
 - Call ordering is a strategic decision
 
 ### Key Patterns
-- **Dynamic instructions:** Use `update-assistant` between calls to inject context from previous results
-- **State carries forward:** Track "best offer so far" in memory, feed into next call's instructions
+- **Dynamic variables:** Use `dynamic_variables` in the scheduled event to inject context per call — no need to modify the assistant between calls
+- **State carries forward:** Track "best offer so far" in memory, pass it as a dynamic variable to the next call
 - **Call ordering strategy:** Start with whoever is least likely to give the best deal (weakest hand first) so you build leverage. Save the strongest candidate for last. Alternative: start with whoever will give a reliable baseline.
-- **One call at a time:** Schedule → poll → get insight → update assistant → schedule next
-- **Use `update-assistant`** between calls to change instructions dynamically
+- **One call at a time:** Schedule (with dynamic vars) → poll → get insight → update state → schedule next
+- **Assistant stays immutable** — define `{{best_quote}}` and `{{best_company}}` placeholders in instructions once, then pass different values per call via the scheduled events API
 
 ### Example 1: Roofer Quotes
 
@@ -1027,21 +1027,27 @@ Calls MUST run serially. Each call's strategy depends on previous results. You'r
 ]
 
 # Flow:
-# 1. Create assistant with initial instructions (no leverage yet)
-#    "Ask for a quote for roof repair on a 2000 sq ft home. Get price, timeline, warranty."
+# 1. Create assistant with dynamic variable placeholders in instructions:
+#    "Ask for a quote for roof repair on a 2000 sq ft home. Get price, timeline, warranty.
+#     {{#best_quote}}CONTEXT: You have received a quote of {{best_quote}} from {{best_company}}.
+#     Mention this if the price seems high. Ask if they can match or beat it.{{/best_quote}}"
+#    Set dynamic_variables: {"best_quote": null, "best_company": null}
 
-# 2. Call roofer 1 → get insight → save quote ($500)
+# 2. Call roofer 1 (no leverage yet — best_quote is null, so that section is skipped)
+#    python telnyx_api.py schedule-call <id> "+1555..." "+1555..." "<time>"
+#    → get insight → save quote ($500)
 #    python telnyx_api.py save-memory "<slug>" "best_quote" '{"amount": 500, "company": "Roofer 1"}'
 
-# 3. Update assistant instructions before call 2:
-#    python telnyx_api.py update-assistant <id> '{"instructions": "...same base instructions...
-#    CONTEXT: You have received a quote of $500 from another contractor. Mention this
-#    if the price seems high. Ask if they can match or beat $500."}'
+# 3. Call roofer 2 — pass dynamic variables via scheduled event:
+#    python telnyx_api.py schedule-call <id> "+1555..." "+1555..." "<time>" \
+#      '{"best_quote": "$500", "best_company": "Roofer 1"}'
+#    → get insight → if better ($420), update best_quote
 
-# 4. Call roofer 2 → get insight → if better, update best_quote
-#    If roofer 2 quoted $420: update best_quote, update instructions with "$420"
+# 4. Call roofer 3 — pass updated context:
+#    python telnyx_api.py schedule-call <id> "+1555..." "+1555..." "<time>" \
+#      '{"best_quote": "$420", "best_company": "Roofer 2"}'
 
-# 5. Repeat: update-assistant → call → insight → update state → next
+# 5. Repeat: schedule with new dynamic vars → poll → insight → update state → next
 # 6. After all 5: report best deal with full comparison
 ```
 
@@ -1053,14 +1059,16 @@ Calls MUST run serially. Each call's strategy depends on previous results. You'r
 # Ordering strategy: Start with the provider you care least about (get a baseline),
 # end with your preferred provider (maximum leverage).
 
-# Same sequential pattern:
-# Call 1 (baseline): "What's your rate for [coverage details]?"
-# Call 2: "I've been quoted $180/month. Can you do better?"
-# Call 3: "Best offer so far is $155/month from [Company]. What can you offer?"
-# Call 4 (preferred): "I'd love to go with you but I have $145/month on the table."
+# Assistant instructions use dynamic variable placeholders:
+#   "You are calling about auto insurance for a 2022 Toyota Camry.
+#    {{#best_quote}}LEVERAGE: The best quote so far is {{best_quote}}/month
+#    from {{best_company}}. Mention this and ask them to beat it.{{/best_quote}}"
 
-# Between each call:
-python telnyx_api.py update-assistant <id> '{"instructions": "...You are calling about auto insurance for a 2022 Toyota Camry... LEVERAGE: The best quote so far is $145/month from StateFarm. Mention this and ask them to beat it."}'
+# Sequential pattern — pass dynamic variables per call:
+# Call 1 (baseline): no leverage vars → "What's your rate for [coverage details]?"
+# Call 2: {"best_quote": "$180", "best_company": "Geico"}
+# Call 3: {"best_quote": "$155", "best_company": "Progressive"}
+# Call 4 (preferred): {"best_quote": "$145", "best_company": "StateFarm"}
 ```
 
 ---
@@ -1220,13 +1228,19 @@ Call to collect information, but the mission doesn't just report — it **takes 
 
 These patterns apply across multiple mission classes.
 
-### 1. Dynamic Instructions Between Calls
+### 1. Dynamic Context Between Calls
 
-Use `update-assistant` to inject context from previous call results into the next call's instructions. Essential for Class 3 (Sequential Negotiation) and Class 5 (action phase).
+Use **dynamic variables** passed via the scheduled events API to inject context from previous call results into each call. This keeps the assistant immutable — define `{{variable}}` placeholders in instructions once, then pass different values per scheduled event. Essential for Class 3 (Sequential Negotiation) and Class 5 (action phase).
 
 ```bash
-# After getting a quote of $350 from call 1:
-python telnyx_api.py update-assistant <assistant_id> '{"instructions": "You are calling to get a quote for roof repair on a 2000 sq ft home. IMPORTANT CONTEXT: Another contractor has quoted $350. If this contractor quotes higher, mention you have a better offer and ask if they can match or beat $350. Be professional but firm."}'
+# Assistant instructions use placeholders:
+#   "You are calling to get a quote for roof repair on a 2000 sq ft home.
+#    {{#best_quote}}IMPORTANT CONTEXT: Another contractor has quoted {{best_quote}}.
+#    If this contractor quotes higher, mention you have a better offer and ask if
+#    they can match or beat it. Be professional but firm.{{/best_quote}}"
+
+# After getting a quote of $350 from call 1, pass it as a dynamic variable on call 2:
+python telnyx_api.py schedule-call <assistant_id> "+1555..." "+1555..." "<time>" '{"best_quote": "$350", "best_company": "ABC Roofing"}'
 ```
 
 ### 2. Human Approval Gates
