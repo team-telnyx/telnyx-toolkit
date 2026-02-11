@@ -499,7 +499,17 @@ python telnyx_api.py get-insights "conv_xyz"
 # Output: Insight: Customer quoted $350 for a 10-story building...
 ```
 
-### Step 6.3: Log the Insight
+### Step 6.3: Rename the Conversation
+
+By default, all conversations are named "Voice Assistant Conversation" which is useless for reviewing in the portal. **Rename each conversation** with a meaningful label after it completes:
+
+```bash
+python telnyx_api.py rename-conversation "<conv_id>" "Call 1: ABC Window Cleaning - $350/visit"
+```
+
+**Best practice:** Include the call sequence number, target name, and key outcome in the name. This makes conversations instantly identifiable when browsing the mission in the Telnyx portal.
+
+### Step 6.4: Log the Insight
 
 ```bash
 python telnyx_api.py log-event <mission_id> <run_id> custom "Call completed with ABC Window Cleaning - quoted $350" "calls" '{"conversation_id": "<conv_id>", "contractor": "ABC Window Cleaning", "outcome": "success", "quote": "$350", "availability": "next week", "notes": "Willing to negotiate for recurring contracts"}'
@@ -665,6 +675,7 @@ python telnyx_api.py list-events-assistant <assistant_id>
 
 # Insights (conversation results - POLL until status is "completed"!)
 python telnyx_api.py get-insights <conversation_id>
+python telnyx_api.py rename-conversation <conversation_id> <name>
 
 # Insight Templates (CRUD)
 python telnyx_api.py create-insight <name> <instructions> [options_json]  # options: json_schema, webhook
