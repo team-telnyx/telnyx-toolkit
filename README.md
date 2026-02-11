@@ -33,6 +33,7 @@ Standalone utilities with scripts you can run directly:
 | **[10DLC Registration](tools/10dlc-registration)** | Interactive wizard for A2P messaging registration |
 | **[Storage Backup](tools/storage-backup)** | Backup/restore workspace to Telnyx Storage |
 | **[Voice SIP](tools/voice-sip)** | SIP-based voice call control |
+| **[Embeddings](tools/embeddings)** | Semantic search & text embeddings (Telnyx-native) |
 
 ### Examples
 
@@ -48,6 +49,12 @@ python3 tools/tts/scripts/telnyx-tts.py "Hello world" -o output.mp3
 
 # Index files for RAG
 python3 tools/rag/sync.py
+
+# Semantic search
+python3 tools/embeddings/search.py "your query" --bucket your-bucket
+
+# Index a file for search
+python3 tools/embeddings/index.py upload /path/to/file.md
 ```
 
 ---
@@ -112,7 +119,8 @@ telnyx-toolkit/
 │   ├── rag/
 │   ├── 10dlc-registration/
 │   ├── storage-backup/
-│   └── voice-sip/
+│   ├── voice-sip/
+│   └── embeddings/
 ├── api/                  # SDK documentation
 │   ├── javascript/
 │   ├── python/

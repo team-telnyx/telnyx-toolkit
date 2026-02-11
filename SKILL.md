@@ -30,6 +30,7 @@ These are standalone utilities with scripts you can run directly:
 | **10DLC Registration** | Interactive wizard for A2P messaging registration | `{baseDir}/tools/10dlc-registration/` |
 | **Storage Backup** | Backup/restore workspace to Telnyx Storage | `{baseDir}/tools/storage-backup/` |
 | **Voice SIP** | SIP-based voice call control | `{baseDir}/tools/voice-sip/` |
+| **Embeddings** | Semantic search & text embeddings (Telnyx-native) | `{baseDir}/tools/embeddings/` |
 
 ### Tool Usage Examples
 
@@ -48,6 +49,12 @@ python3 {baseDir}/tools/rag/sync.py
 
 # 10DLC registration wizard
 {baseDir}/tools/10dlc-registration/setup.sh
+
+# Semantic search
+python3 {baseDir}/tools/embeddings/search.py "your query" --bucket your-bucket
+
+# Index a file for search
+python3 {baseDir}/tools/embeddings/index.py upload /path/to/file.md
 ```
 
 Each tool has its own `SKILL.md` with detailed usage instructions.
@@ -124,7 +131,8 @@ telnyx-toolkit/
 │   ├── rag/
 │   ├── 10dlc-registration/
 │   ├── storage-backup/
-│   └── voice-sip/
+│   ├── voice-sip/
+│   └── embeddings/
 ├── api/                  # SDK documentation
 │   ├── javascript/       # 35 skills
 │   ├── python/           # 35 skills
