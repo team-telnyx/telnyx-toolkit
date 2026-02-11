@@ -1,12 +1,12 @@
 ---
 name: telnyx-embeddings
-description: Semantic search and text embeddings using Telnyx AI. Search any Telnyx Storage bucket with natural language — no OpenAI or Google API keys required.
+description: Text-to-vector embeddings and semantic search using Telnyx AI. Generate embedding vectors via an OpenAI-compatible API — no OpenAI or Google API keys required.
 metadata: {"openclaw":{"emoji":"🔮","requires":{"bins":["python3"],"env":["TELNYX_API_KEY"]},"primaryEnv":"TELNYX_API_KEY"}}
 ---
 
 # Telnyx Embeddings
 
-Semantic search and text embeddings using Telnyx's native AI APIs. Search any Telnyx Storage bucket with natural language queries — the query embedding happens server-side, so you only need a `TELNYX_API_KEY`. No OpenAI or Google API keys required.
+Generate embedding vectors from text using Telnyx's OpenAI-compatible AI API. Convert any text to high-dimensional vectors for similarity comparisons, clustering, classification, or building custom search indexes — all with just a `TELNYX_API_KEY`. No OpenAI or Google API keys required.
 
 ## Requirements
 
@@ -17,16 +17,80 @@ Semantic search and text embeddings using Telnyx's native AI APIs. Search any Te
 
 ```bash
 export TELNYX_API_KEY="KEY..."
-python3 {baseDir}/tools/embeddings/search.py "your query" --bucket your-bucket
+python3 {baseDir}/tools/embeddings/embed.py "Hello, world!"
 ```
 
 That's it. No pip install, no setup wizard, no external provider keys.
 
-## Search
+## Text-to-Vector Embedding
 
-Search any Telnyx Storage bucket that has embeddings enabled. The query is embedded server-side and matched against your indexed content.
+Generate embedding vectors for any text input. The API is OpenAI-compatible, so existing integrations work out of the box.
 
 ### Basic Usage
+
+```bash
+# Embed text (uses thenlper/gte-large by default)
+./embed.py "text to embed"
+
+# Use a specific model
+./embed.py "text to embed" --model intfloat/multilingual-e5-large
+
+# Read from file
+./embed.py --file input.txt
+
+# Pipe from stdin
+echo "text to embed" | ./embed.py --stdin
+
+# JSON output (for scripting)
+./embed.py "text" --json
+
+# List available models
+./embed.py --list-models
+```
+
+### Available Models
+
+| Model | Description |
+|-------|-------------|
+| `thenlper/gte-large` | General text embeddings (default) |
+| `intfloat/multilingual-e5-large` | Multilingual text embeddings |
+
+### OpenAI-Compatible Client
+
+The embeddings API is OpenAI-compatible, so you can use the OpenAI Python SDK with `base_url` pointed at Telnyx:
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="KEY...",
+    base_url="https://api.telnyx.com/v2/ai/openai"
+)
+
+response = client.embeddings.create(
+    model="thenlper/gte-large",
+    input="Hello, world!"
+)
+print("Dimensions:", len(response.data[0].embedding))
+```
+
+### From Python (Direct)
+
+```python
+from embed import embed_text
+
+result = embed_text("your text here")
+for item in result.get("data", []):
+    vector = item["embedding"]       # list of floats
+    dims = item["dimensions"]        # vector dimensionality
+    print(f"{dims}-dimensional vector")
+```
+
+## Bucket Search
+
+Search any Telnyx Storage bucket using natural language. Upload files, trigger server-side embedding, then run similarity search — the query embedding happens server-side too.
+
+### Search
 
 ```bash
 # Search with default bucket (from config.json)
@@ -157,59 +221,9 @@ After uploading files, trigger the embedding process to make them searchable:
 ./index.py delete filename.md --bucket my-bucket
 ```
 
-## Direct Embedding
-
-Generate embedding vectors for raw text. Useful for custom similarity comparisons, clustering, or building your own search index.
-
-### Available Models
-
-| Model | Description |
-|-------|-------------|
-| `thenlper/gte-large` | General text embeddings (default) |
-| `intfloat/multilingual-e5-large` | Multilingual text embeddings |
-
-```bash
-# List available models
-./embed.py --list-models
-
-# Embed text (uses thenlper/gte-large by default)
-./embed.py "text to embed"
-
-# Use a specific model
-./embed.py "text to embed" --model intfloat/multilingual-e5-large
-
-# Read from file
-./embed.py --file input.txt
-
-# Pipe from stdin
-echo "text to embed" | ./embed.py --stdin
-
-# JSON output
-./embed.py "text" --json
-```
-
-### OpenAI-Compatible Client
-
-The embeddings API is OpenAI-compatible, so you can use the OpenAI Python SDK with `base_url` pointed at Telnyx:
-
-```python
-from openai import OpenAI
-
-client = OpenAI(
-    api_key="KEY...",
-    base_url="https://api.telnyx.com/v2/ai/openai"
-)
-
-response = client.embeddings.create(
-    model="thenlper/gte-large",
-    input="Hello, world!"
-)
-print("Dimensions:", len(response.data[0].embedding))
-```
-
 ## Workflow
 
-The typical workflow for making content searchable:
+The typical workflow for making content searchable via bucket search:
 
 ```
 1. Upload files          2. Trigger embedding       3. Search
@@ -263,6 +277,9 @@ All settings can be overridden with CLI flags (`--bucket`, `--num`).
 ### From Other Tools/Bots
 
 ```bash
+# Embed text and capture vector
+vector=$(python3 {baseDir}/tools/embeddings/embed.py "your text" --json)
+
 # Search and capture results
 results=$(python3 {baseDir}/tools/embeddings/search.py "your query" --json)
 
@@ -275,6 +292,13 @@ python3 {baseDir}/tools/embeddings/index.py embed --bucket my-bucket
 
 ```python
 import subprocess, json
+
+# Embed text
+result = subprocess.run(
+    ["python3", "{baseDir}/tools/embeddings/embed.py", "your text", "--json"],
+    capture_output=True, text=True
+)
+vector = json.loads(result.stdout)
 
 # Search
 result = subprocess.run(
@@ -302,13 +326,13 @@ This tool is **complementary** to `tools/rag/`, not a replacement:
 
 | Feature | Embeddings (this tool) | RAG (`tools/rag/`) |
 |---------|----------------------|-------------------|
-| **Purpose** | Search primitives | Full RAG pipeline |
+| **Purpose** | Text-to-vector + search primitives | Full RAG pipeline |
 | **Search** | Direct similarity search | Retrieve + rerank + generate |
 | **Indexing** | Upload + embed trigger | Auto-sync + smart chunking |
 | **Q&A** | No (returns raw results) | Yes (LLM-powered answers) |
-| **Use case** | Standalone search, integrations | Workspace-level knowledge base |
+| **Use case** | Vectors, standalone search, integrations | Workspace-level knowledge base |
 
-Use **embeddings** when you need simple, direct search. Use **RAG** when you need AI-powered answers with source citations.
+Use **embeddings** when you need vectors or simple search. Use **RAG** when you need AI-powered answers with source citations.
 
 ## Troubleshooting
 
