@@ -99,11 +99,9 @@ def embed_text(text, model=None, timeout=30, max_retries=3):
     """
     api_key = load_credentials()
 
-    url = "https://api.telnyx.com/v2/ai/embeddings"
+    url = "https://api.telnyx.com/v2/ai/openai/embeddings"
 
-    payload_dict = {"input": text}
-    if model:
-        payload_dict["model"] = model
+    payload_dict = {"input": text, "model": model or "thenlper/gte-large"}
 
     payload = json.dumps(payload_dict).encode()
 
