@@ -509,6 +509,34 @@ python telnyx_api.py log-event <mission_id> <run_id> custom "Call completed with
 
 ## Phase 7: Complete the Mission
 
+### ⚠️ MANDATORY Completion Checklist
+
+**Every mission MUST complete ALL of these before it can be considered done.** Skipping any of these leaves the mission in a broken state in the Telnyx portal.
+
+| # | Action | Command | Why |
+|---|--------|---------|-----|
+| 1 | **Update ALL plan step statuses** | `update-step <mid> <rid> <step_id> completed` | Steps show in portal — "pending" means it looks unfinished |
+| 2 | **Log events for every completed call** | `log-event ... custom "Call completed" <step_id> '{"conversation_id": "..."}'` | Creates audit trail linking conversations to the mission |
+| 3 | **Set run result_summary** | Included in `complete` or `update-run` | Human-readable summary visible in portal |
+| 4 | **Set run result_payload** | Included in `complete` or `update-run` | Structured data for programmatic consumption |
+| 5 | **Mark run as succeeded/failed** | `complete` or `update-run <mid> <rid> succeeded` | Closes the run |
+
+**The `complete` command handles #3, #4, and #5 in one call** — but you still need to do #1 and #2 yourself.
+
+```bash
+# 1. Update every step status (do this THROUGHOUT the mission, not just at the end)
+python telnyx_api.py update-step <mission_id> <run_id> "setup" "completed"
+python telnyx_api.py update-step <mission_id> <run_id> "calls" "completed"
+python telnyx_api.py update-step <mission_id> <run_id> "analyze" "completed"
+
+# 2. Complete the run with summary and payload
+python telnyx_api.py complete "<slug>" <mission_id> <run_id> \
+  "Contacted 5 contractors, received 4 quotes. Best: ABC Cleaning ($350)" \
+  '{"contractors_contacted": 5, "quotes_received": 4, "recommended": [{"name": "ABC Cleaning", "quote": 350}]}'
+```
+
+**Common mistake:** Logging `step_completed` events but NOT calling `update-step`. These are separate — events are the audit log, step status is the progress tracker. You need BOTH.
+
 ### Step 7.1: Analyze Results
 
 After all calls complete:
@@ -518,14 +546,16 @@ After all calls complete:
 
 ### Step 7.2: Complete the Run
 
-```bash
-python telnyx_api.py update-run <mission_id> <run_id> succeeded
-```
-
-Or with full results:
+Use the `complete` command to set result_summary, result_payload, mark the run as succeeded, and clean up state in one step:
 
 ```bash
 python telnyx_api.py complete "find-window-washing-contractors" <mission_id> <run_id> "Contacted 5 contractors, received 4 quotes. Best options: ABC Cleaning ($350) and XYZ Windows ($380)." '{"contractors_contacted": 5, "quotes_received": 4, "recommended": [{"name": "ABC Cleaning", "quote": 350}, {"name": "XYZ Windows", "quote": 380}]}'
+```
+
+Or use `update-run` directly with all fields:
+
+```bash
+python telnyx_api.py update-run <mission_id> <run_id> succeeded "Human-readable summary here" '{"structured": "payload"}'
 ```
 
 The `complete` command also removes the mission from the state file.
@@ -1514,6 +1544,43 @@ Task: "Load mission memory from .missions_state.json for slug '<slug>'.
 | All calls complete, analyzing | One-shot | Final analysis, then done |
 
 Adjust the interval based on the mission — short batch sweeps poll frequently, long-running outreach can poll less often.
+
+### Sequential Mission Cron Pattern
+
+For Class 3 (Sequential Negotiation) and other serial missions, the cron job does more than just poll — it drives the entire call chain. Each poll iteration must:
+
+1. **Check if the current call is complete** (poll the active event)
+2. **Collect insights** from the completed conversation
+3. **Update the step status** (`update-step` for the completed call step)
+4. **Extract dynamic variables** from the insight (e.g., the quote amount) for the next call
+5. **Schedule the next call** with updated `dynamic_variables`
+6. **Update the next step** to `in_progress`
+7. **Repeat** until all sequential calls are done
+8. **Complete the mission** with `result_summary` and `result_payload`
+
+```
+Schedule: every 2-3 minutes
+Session: isolated (agentTurn)
+Task: "Load mission state for slug '<slug>'.
+  Check which call we're on (e.g., call_sequence: 1 of 3).
+  Poll get-event for the current event_id.
+  If still in progress: wait for next poll.
+  If completed:
+    - Get insights from the conversation
+    - Update step status: update-step <mid> <rid> 'call-N' completed
+    - Log event with conversation_id
+    - Extract negotiation context from insight (e.g., quote, terms)
+    - If more calls remain:
+      - Schedule next call with dynamic_variables from extracted context
+      - Update step status: update-step <mid> <rid> 'call-N+1' in_progress
+      - Save updated state (increment call_sequence, save new event_id)
+    - If all calls done:
+      - Update analyze step, run analysis, complete the mission
+      - Report summary to human
+      - Remove this cron job"
+```
+
+**Key difference from parallel polling:** The cron is stateful — it tracks which call in the sequence is active and drives the chain forward. Save `call_sequence`, `current_event_id`, and accumulated results in mission memory so the cron can resume correctly after each firing.
 
 ## Retry Strategy
 

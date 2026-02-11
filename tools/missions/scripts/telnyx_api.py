@@ -1027,7 +1027,7 @@ Commands:
   Runs:
     create-run <mission_id> <input_json>
     get-run <mission_id> <run_id>
-    update-run <mission_id> <run_id> <status>
+    update-run <mission_id> <run_id> <status> [result_summary] [result_payload_json]
     list-runs <mission_id>
 
   Plan:
@@ -1143,7 +1143,10 @@ def main():
         elif cmd == "get-run":
             get_run(args[0], args[1])
         elif cmd == "update-run":
-            update_run(args[0], args[1], status=args[2])
+            # update-run <mission_id> <run_id> <status> [result_summary] [result_payload_json]
+            result_summary = args[3] if len(args) > 3 else None
+            result_payload = json.loads(args[4]) if len(args) > 4 else None
+            update_run(args[0], args[1], status=args[2], result_summary=result_summary, result_payload=result_payload)
         elif cmd == "list-runs":
             list_runs(args[0])
 
