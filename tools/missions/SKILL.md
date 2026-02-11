@@ -802,15 +802,35 @@ python telnyx_api.py list-phones --available
 
 ### Decision Flow
 
-1. **Assistants:** Before creating a new assistant, check if an existing one has the right tools, voice, and transcription settings. If it's close but needs tweaks, use `update-assistant` instead of creating a duplicate:
+#### ⚠️ CRITICAL: Reuse Without Modification
+
+**The rule is: reuse existing resources IF you can use them as-is. Do NOT modify existing assistants, insights, or insight groups that may be in use by other missions or users.** Editing a shared resource (e.g., changing an assistant's instructions or an insight's schema) can silently break unrelated workflows that depend on the current configuration.
+
+**Safe to reuse without modification:**
+- An existing assistant whose instructions, tools, voice, and settings already match your needs exactly
+- An existing insight template whose schema/instructions already extract what you need
+- The default "Summary" insight (always reuse this — never recreate it)
+- An existing insight group that already contains the insights you need
+
+**When to create new instead of reusing:**
+- You need different instructions, tools, voice, or model → **create a new assistant**
+- You need a different extraction schema → **create a new insight template**
+- You need a different combination of insights → **create a new insight group**
+- The existing resource is "close but needs tweaks" → **create new, don't modify the existing one**
+
+**The only exception** to the "don't modify" rule is `update-assistant` for **dynamic instructions within a single mission run** (e.g., Class 3 Sequential Negotiation, where you inject context between calls on an assistant YOU created for that mission). Never modify an assistant you didn't create in the current mission.
+
+1. **Assistants:** Search for existing assistants. If one matches your needs exactly (instructions, tools, voice, model), reuse it. If it's close but not quite right, **create a new one** — don't modify the existing one:
    ```bash
-   python telnyx_api.py get-assistant <id>  # inspect the full config
-   python telnyx_api.py update-assistant <id> '{"instructions": "updated instructions"}'
+   python telnyx_api.py list-assistants --name=Weather  # search by name
+   python telnyx_api.py get-assistant <id>  # inspect full config before deciding
+   # If it fits → reuse as-is
+   # If it doesn't fit → create a new assistant instead
    ```
 
-2. **Insights:** A structured insight like "extract high temperature and snow chance" is reusable across many missions. Check `list-insights` before creating a new one. If a good insight exists, just assign it to your group.
+2. **Insights:** A structured insight like "extract high temperature and snow chance" is reusable across many missions. Check `list-insights` before creating a new one. If a good insight exists with the right schema, assign it to your group. If you need a different schema, create a new insight template — don't modify the existing one.
 
-3. **Insight Groups:** Create a new group per mission (they're cheap), but populate it with existing insights when possible. Only create new insight templates when your data extraction needs are genuinely new.
+3. **Insight Groups:** Create a new group per mission (they're cheap), but populate it with existing insight templates when they match. Only create new insight templates when your data extraction needs are genuinely new.
 
 4. **Phone Numbers:** Numbers already assigned to a connection can't be reused for a different assistant. Only grab unassigned numbers.
 
