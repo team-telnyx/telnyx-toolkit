@@ -22,6 +22,7 @@ These are standalone utilities with scripts you can run directly:
 
 | Tool | Description | Path |
 |------|-------------|------|
+| **Missions** | AI agent task tracking, voice/SMS assistants, scheduled calls | `{baseDir}/tools/missions/` |
 | **STT** | Speech-to-text transcription (Whisper) | `{baseDir}/tools/stt/` |
 | **TTS** | Text-to-speech synthesis | `{baseDir}/tools/tts/` |
 | **CLI** | Telnyx CLI wrapper and helpers | `{baseDir}/tools/cli/` |
@@ -34,6 +35,9 @@ These are standalone utilities with scripts you can run directly:
 ### Tool Usage Examples
 
 ```bash
+# Create a mission and schedule calls
+python3 {baseDir}/tools/missions/scripts/telnyx_api.py init "Find contractors" "Call contractors and get quotes" "User request" '[{"step_id": "calls", "description": "Make calls", "sequence": 1}]'
+
 # Transcribe audio
 python3 {baseDir}/tools/stt/scripts/telnyx-stt.py /path/to/audio.mp3
 
@@ -117,6 +121,7 @@ Guides for building real-time voice apps on mobile and web:
 telnyx-toolkit/
 ├── SKILL.md              # This file (index)
 ├── tools/                # Ready-to-use utilities
+│   ├── missions/         # AI agent task tracking
 │   ├── stt/
 │   ├── tts/
 │   ├── cli/
