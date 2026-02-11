@@ -695,6 +695,15 @@ def unlink_telnyx_agent(mission_id: str, run_id: str, telnyx_agent_id: str):
 # ============================================================================
 
 
+def rename_conversation(conversation_id: str, name: str) -> dict:
+    """Rename a conversation. Useful for labeling calls with meaningful names."""
+    result = api_request(
+        "PUT", f"/ai/conversations/{conversation_id}", {"name": name}
+    )
+    print(f"Renamed conversation {conversation_id}: {name}")
+    return result.get("data", {})
+
+
 def get_conversation_insights(conversation_id: str) -> list:
     """Get insights from a conversation."""
     result = api_request(
@@ -1071,6 +1080,7 @@ Commands:
 
   Insights (conversation results):
     get-insights <conversation_id>
+    rename-conversation <conversation_id> <name>
 
   Insight Templates (CRUD):
     create-insight <name> <instructions> [options_json]
@@ -1253,6 +1263,8 @@ def main():
         # Insights (conversation results)
         elif cmd == "get-insights":
             get_conversation_insights(args[0])
+        elif cmd == "rename-conversation":
+            rename_conversation(args[0], args[1])
 
         # Insight Templates (CRUD)
         elif cmd == "create-insight":
