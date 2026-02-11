@@ -2,7 +2,7 @@
 
 The complete toolkit for building with Telnyx. Includes **ready-to-use tools** and **SDK documentation** for all Telnyx APIs.
 
-[![ClawdHub](https://img.shields.io/badge/ClawdHub-telnyx--toolkit-blue)](https://clawhub.ai/skills/telnyx-toolkit)
+[![ClawHub](https://img.shields.io/badge/ClawHub-telnyx--toolkit-blue)](https://clawhub.ai/skills/telnyx-toolkit)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ## Quick Start
@@ -11,7 +11,7 @@ The complete toolkit for building with Telnyx. Includes **ready-to-use tools** a
 export TELNYX_API_KEY="your_key_here"
 ```
 
-### Install via ClawdHub
+### Install via ClawHub
 
 ```bash
 clawhub install telnyx-toolkit
@@ -110,7 +110,7 @@ Guides for building real-time voice apps on mobile and web:
 
 ```
 telnyx-toolkit/
-├── SKILL.md              # ClawdHub skill definition
+├── SKILL.md              # ClawHub skill definition
 ├── tools/                # Ready-to-use utilities
 │   ├── stt/
 │   ├── tts/
@@ -142,7 +142,7 @@ telnyx-toolkit/
 - [Telnyx API Docs](https://developers.telnyx.com)
 - [Telnyx Portal](https://portal.telnyx.com)
 - [API Reference](https://developers.telnyx.com/api/v2/overview)
-- [ClawdHub](https://clawhub.ai)
+- [ClawHub](https://clawhub.ai)
 
 ## License
 
