@@ -85,6 +85,29 @@ def parse_telnyx_error(error_body):
         return error_body.strip()
 
 
+def list_models(timeout=10):
+    """List available embedding models from Telnyx API
+
+    Returns:
+        list: Model names, or None on error
+    """
+    api_key = load_credentials()
+    url = "https://api.telnyx.com/v2/ai/openai/embeddings/models"
+    headers = {
+        "Authorization": "Bearer %s" % api_key,
+        "Content-Type": "application/json",
+        "User-Agent": "openclaw-telnyx-embeddings/1.0",
+    }
+    req = urllib.request.Request(url, headers=headers, method="GET")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            data = json.loads(response.read().decode())
+            return data.get("models", [])
+    except (urllib.error.HTTPError, urllib.error.URLError, OSError) as e:
+        print("ERROR: Could not fetch models: %s" % e, file=sys.stderr)
+        return None
+
+
 def embed_text(text, model=None, timeout=30, max_retries=3):
     """Generate embedding vector for text using Telnyx AI
 
@@ -260,11 +283,22 @@ def main():
     parser.add_argument("text", nargs="*", help="Text to embed")
     parser.add_argument("--file", help="Read text from file")
     parser.add_argument("--stdin", action="store_true", help="Read text from stdin")
-    parser.add_argument("--model", "-m", help="Embedding model name")
+    parser.add_argument("--model", "-m", help="Embedding model name (default: thenlper/gte-large)")
+    parser.add_argument("--list-models", action="store_true", help="List available embedding models")
     parser.add_argument("--json", "-j", action="store_true", help="Output as JSON")
     parser.add_argument("--timeout", "-t", type=int, default=30, help="Request timeout in seconds")
 
     args = parser.parse_args()
+
+    if args.list_models:
+        models = list_models(timeout=args.timeout)
+        if models is None:
+            sys.exit(1)
+        print("\nAvailable models:")
+        for m in models:
+            default = " (default)" if m == "thenlper/gte-large" else ""
+            print("  %s%s" % (m, default))
+        sys.exit(0)
 
     # Get text from one of the input sources
     text = None

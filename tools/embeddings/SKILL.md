@@ -161,9 +161,22 @@ After uploading files, trigger the embedding process to make them searchable:
 
 Generate embedding vectors for raw text. Useful for custom similarity comparisons, clustering, or building your own search index.
 
+### Available Models
+
+| Model | Description |
+|-------|-------------|
+| `thenlper/gte-large` | General text embeddings (default) |
+| `intfloat/multilingual-e5-large` | Multilingual text embeddings |
+
 ```bash
-# Embed text
+# List available models
+./embed.py --list-models
+
+# Embed text (uses thenlper/gte-large by default)
 ./embed.py "text to embed"
+
+# Use a specific model
+./embed.py "text to embed" --model intfloat/multilingual-e5-large
 
 # Read from file
 ./embed.py --file input.txt
@@ -173,9 +186,25 @@ echo "text to embed" | ./embed.py --stdin
 
 # JSON output
 ./embed.py "text" --json
+```
 
-# Specify model
-./embed.py "text" --model model-name
+### OpenAI-Compatible Client
+
+The embeddings API is OpenAI-compatible, so you can use the OpenAI Python SDK with `base_url` pointed at Telnyx:
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="KEY...",
+    base_url="https://api.telnyx.com/v2/ai/openai"
+)
+
+response = client.embeddings.create(
+    model="thenlper/gte-large",
+    input="Hello, world!"
+)
+print("Dimensions:", len(response.data[0].embedding))
 ```
 
 ## Workflow
