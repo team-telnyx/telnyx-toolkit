@@ -5,10 +5,6 @@ Telnyx Embeddings - Direct Text Embedding
 Generate embedding vectors for text using Telnyx AI.
 Returns raw vectors for use in custom applications.
 
-NOTE: The direct text-to-vector endpoint format is pending confirmation
-from the Telnyx engineering team. This script has the full structure in
-place and will be updated once the API format is confirmed.
-
 Usage:
   ./embed.py "text to embed"
   ./embed.py --file input.txt
@@ -100,26 +96,8 @@ def embed_text(text, model=None, timeout=30, max_retries=3):
 
     Returns:
         dict: Response with embedding vector or error info
-
-    NOTE: The API endpoint and request format below are based on Telnyx's
-    OpenAI-compatible pattern for AI endpoints. The exact format is pending
-    confirmation from the engineering team. If you get an unexpected error,
-    check for updates to this script.
     """
     api_key = load_credentials()
-
-    # -----------------------------------------------------------------------
-    # TBD: Direct text embedding endpoint
-    #
-    # The likely endpoint follows Telnyx's OpenAI-compatible pattern:
-    #   POST /v2/ai/embeddings
-    #   {"input": "text to embed", "model": "..."}
-    #
-    # This is NOT confirmed. After the engineer meeting, update:
-    #   1. The URL (if different)
-    #   2. The payload schema (input as string vs array, model name)
-    #   3. The response parsing (vector extraction)
-    # -----------------------------------------------------------------------
 
     url = "https://api.telnyx.com/v2/ai/embeddings"
 
@@ -152,15 +130,10 @@ def embed_text(text, model=None, timeout=30, max_retries=3):
                     "details": parse_telnyx_error(error_body),
                 }
 
-            if e.code == 404 or e.code == 422:
+            if e.code in [404, 422]:
                 return {
                     "error": "HTTP %d" % e.code,
                     "details": parse_telnyx_error(error_body),
-                    "hint": (
-                        "The direct text embedding endpoint may not be available yet "
-                        "or the request format may have changed. Check for updates to "
-                        "this script or contact the Telnyx engineering team."
-                    ),
                 }
 
             if attempt < max_retries - 1 and e.code >= 500:
@@ -235,11 +208,7 @@ def normalize_embedding_response(response_data):
             "model": response_data.get("model", "unknown"),
         }
 
-    # Unknown format — return as-is with a warning
-    response_data["_warning"] = (
-        "Unexpected response format. The API response may have changed. "
-        "Check for updates to this script."
-    )
+    # Unknown format — return as-is
     return response_data
 
 
@@ -256,16 +225,7 @@ def format_embedding(result):
         lines = ["ERROR: %s" % result["error"]]
         if "details" in result:
             lines.append("  %s" % result["details"])
-        if "hint" in result:
-            lines.append("")
-            lines.append("  Hint: %s" % result["hint"])
         return "\n".join(lines)
-
-    if "_warning" in result:
-        return "WARNING: %s\n\nRaw response:\n%s" % (
-            result["_warning"],
-            json.dumps(result, indent=2),
-        )
 
     if "data" not in result or not result["data"]:
         return "No embedding returned."

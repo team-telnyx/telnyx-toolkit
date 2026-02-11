@@ -157,11 +157,9 @@ After uploading files, trigger the embedding process to make them searchable:
 ./index.py delete filename.md --bucket my-bucket
 ```
 
-## Direct Embedding (Experimental)
+## Direct Embedding
 
 Generate embedding vectors for raw text. Useful for custom similarity comparisons, clustering, or building your own search index.
-
-> **Experimental:** The direct text embedding endpoint is pending confirmation from the Telnyx engineering team. This script may return errors until the API format is finalized. Search and index are fully functional without it.
 
 ```bash
 # Embed text
@@ -176,7 +174,7 @@ echo "text to embed" | ./embed.py --stdin
 # JSON output
 ./embed.py "text" --json
 
-# Specify model (when available)
+# Specify model
 ./embed.py "text" --model model-name
 ```
 
