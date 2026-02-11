@@ -130,7 +130,7 @@ class TelnyxS3Client:
         )
         path = "/%s" % key if key else "/"
 
-        t = datetime.datetime.utcnow()
+        t = datetime.datetime.now(datetime.timezone.utc)
         amz_date = t.strftime("%Y%m%dT%H%M%SZ")
         date_stamp = t.strftime("%Y%m%d")
 
@@ -245,7 +245,7 @@ class TelnyxS3Client:
         host = "%s.telnyxcloudstorage.com" % self.region
         path = "/%s" % bucket
 
-        t = datetime.datetime.utcnow()
+        t = datetime.datetime.now(datetime.timezone.utc)
         amz_date = t.strftime("%Y%m%dT%H%M%SZ")
         date_stamp = t.strftime("%Y%m%d")
 
@@ -479,7 +479,10 @@ def cmd_list(args):
 
         if status == 200 and isinstance(response, dict):
             data = response.get("data", {})
-            files = data.get("files", data.get("embedded_files", []))
+            if isinstance(data, list):
+                files = data
+            else:
+                files = data.get("files", data.get("embedded_files", []))
             if isinstance(files, list):
                 print("  Embedded files: %d" % len(files))
                 for f in files:
