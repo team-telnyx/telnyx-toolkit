@@ -1036,17 +1036,17 @@ Calls MUST run serially. Each call's strategy depends on previous results. You'r
 #    Set dynamic_variables: {"best_quote": null, "best_company": null}
 
 # 2. Call roofer 1 (no leverage yet — best_quote is null, so that section is skipped)
-#    python telnyx_api.py schedule-call <id> "+1555..." "+1555..." "<time>" $MID $RID
+#    python telnyx_api.py schedule-call <id> "+1555..." "+1555..." "<time>" $MISSION_ID $RUN_ID
 #    → get insight → save quote ($500)
 #    python telnyx_api.py save-memory "<slug>" "best_quote" '{"amount": 500, "company": "Roofer 1"}'
 
 # 3. Call roofer 2 — pass dynamic variables via scheduled event:
-#    python telnyx_api.py schedule-call <id> "+1555..." "+1555..." "<time>" $MID $RID \
+#    python telnyx_api.py schedule-call <id> "+1555..." "+1555..." "<time>" $MISSION_ID $RUN_ID \
 #      '{"best_quote": "$500", "best_company": "Roofer 1"}'
 #    → get insight → if better ($420), update best_quote
 
 # 4. Call roofer 3 — pass updated context:
-#    python telnyx_api.py schedule-call <id> "+1555..." "+1555..." "<time>" $MID $RID \
+#    python telnyx_api.py schedule-call <id> "+1555..." "+1555..." "<time>" $MISSION_ID $RUN_ID \
 #      '{"best_quote": "$420", "best_company": "Roofer 2"}'
 
 # 5. Repeat: schedule with new dynamic vars → poll → insight → update state → next
