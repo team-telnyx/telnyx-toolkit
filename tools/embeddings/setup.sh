@@ -38,18 +38,18 @@ check_python() {
     if ! command -v python3 &> /dev/null; then
         log_err "Python 3 is required but not installed"
         SETUP_ERRORS+=("Python 3 not found")
-        ((CHECKS_FAILED++))
+        ((++CHECKS_FAILED))
         return 1
     fi
 
     python_version=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
     if python3 -c "import sys; sys.exit(0 if sys.version_info >= (3, 8) else 1)" 2>/dev/null; then
         log_ok "Python $python_version found"
-        ((CHECKS_PASSED++))
+        ((++CHECKS_PASSED))
     else
         log_err "Python 3.8+ required, found $python_version"
         SETUP_ERRORS+=("Python version too old: $python_version")
-        ((CHECKS_FAILED++))
+        ((++CHECKS_FAILED))
         return 1
     fi
 }
@@ -86,9 +86,9 @@ check_syntax() {
     done
 
     if $all_ok; then
-        ((CHECKS_PASSED++))
+        ((++CHECKS_PASSED))
     else
-        ((CHECKS_FAILED++))
+        ((++CHECKS_FAILED))
         return 1
     fi
 }
@@ -118,7 +118,7 @@ check_credentials() {
         echo "   Get your API key at: https://portal.telnyx.com/#/app/api-keys"
         echo ""
         SETUP_ERRORS+=("No API key found")
-        ((CHECKS_FAILED++))
+        ((++CHECKS_FAILED))
         return 1
     fi
 
@@ -138,16 +138,16 @@ check_credentials() {
         # 401/403 = bad/expired key
         if [[ "$response" =~ ^[2-4][0-9][0-9]$ ]]; then
             log_ok "API key is valid"
-            ((CHECKS_PASSED++))
+            ((++CHECKS_PASSED))
         else
             log_err "API key test failed (HTTP $response)"
             SETUP_ERRORS+=("Invalid or expired API key")
-            ((CHECKS_FAILED++))
+            ((++CHECKS_FAILED))
             return 1
         fi
     else
         log_warn "Could not load API key for testing"
-        ((CHECKS_FAILED++))
+        ((++CHECKS_FAILED))
         return 1
     fi
 }
@@ -158,17 +158,17 @@ check_config() {
     if [[ ! -f "$SCRIPT_DIR/config.json" ]]; then
         log_err "config.json not found"
         SETUP_ERRORS+=("Missing config.json")
-        ((CHECKS_FAILED++))
+        ((++CHECKS_FAILED))
         return 1
     fi
 
     if python3 -c "import json; json.load(open('$SCRIPT_DIR/config.json'))" 2>/dev/null; then
         log_ok "config.json is valid JSON"
-        ((CHECKS_PASSED++))
+        ((++CHECKS_PASSED))
     else
         log_err "config.json has invalid JSON syntax"
         SETUP_ERRORS+=("Invalid config.json syntax")
-        ((CHECKS_FAILED++))
+        ((++CHECKS_FAILED))
         return 1
     fi
 }
@@ -178,7 +178,7 @@ make_executable() {
 
     if chmod +x "$SCRIPT_DIR"/*.py "$SCRIPT_DIR"/*.sh 2>/dev/null; then
         log_ok "Scripts marked executable"
-        ((CHECKS_PASSED++))
+        ((++CHECKS_PASSED))
     else
         log_warn "Could not make all scripts executable"
     fi
@@ -194,7 +194,7 @@ create_bucket_if_needed() {
 
     if python3 "$SCRIPT_DIR/index.py" create-bucket "$bucket" 2>/dev/null; then
         log_ok "Bucket '$bucket' ready"
-        ((CHECKS_PASSED++))
+        ((++CHECKS_PASSED))
     else
         log_warn "Could not create/verify bucket (it may already exist)"
     fi
@@ -219,7 +219,7 @@ test_search() {
 
     if [[ "$status" == "200" ]]; then
         log_ok "Search endpoint responding (bucket: $bucket)"
-        ((CHECKS_PASSED++))
+        ((++CHECKS_PASSED))
     elif [[ "$status" == "404" ]]; then
         log_warn "Bucket '$bucket' not found or embeddings not enabled"
         echo "   Upload files and run: ./index.py embed --bucket $bucket"
