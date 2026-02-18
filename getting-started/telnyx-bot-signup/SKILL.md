@@ -49,6 +49,12 @@ The script outputs the integer solution to stdout. This finds a value where `has
 
 **Ask the user for their email address** before making this request.
 
+> **Important:** This request accepts the Telnyx [Terms and Conditions](https://telnyx.com/terms-and-conditions-of-service) and [Privacy Policy](https://telnyx.com/privacy-policy) on the user's behalf. Before submitting, inform the user:
+>
+> "By proceeding, you agree to the Telnyx Terms and Conditions (https://telnyx.com/terms-and-conditions-of-service) and Privacy Policy (https://telnyx.com/privacy-policy)."
+>
+> Use the actual URLs returned from Step 1. Do not proceed without the user's acknowledgment.
+
 ```bash
 curl -s -X POST https://api.telnyx.com/v2/bot_signup \
   -H "Content-Type: application/json" \
