@@ -1,12 +1,12 @@
 ---
 name: telnyx-bot-signup
-description: Automated Telnyx bot account signup via Proof of Work challenge (production)
+description: Automated Telnyx bot account signup via Proof of Work challenge
 metadata: {"openclaw":{"emoji":"🤖","requires":{"bins":["python3","curl"],"env":[]},"primaryEnv":"TELNYX_API_KEY"}}
 ---
 
-# Telnyx Bot Signup (Production)
+# Telnyx Bot Signup
 
-Create a new Telnyx bot account via the PoW-based signup flow on the **production** API (`https://api.telnyx.com`). Walks through challenge solving, account creation, email verification, and API key generation.
+Create a new Telnyx bot account via the PoW-based signup flow (`https://api.telnyx.com`). Walks through challenge solving, account creation, email verification, and API key generation.
 
 ## Flow
 
