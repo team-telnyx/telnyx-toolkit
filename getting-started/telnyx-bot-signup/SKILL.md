@@ -57,9 +57,12 @@ curl -s -X POST https://api.telnyx.com/v2/bot_signup \
     "pow_solution": "<solution from step 2>",
     "terms_and_conditions_url": "<from step 1>",
     "privacy_policy_url": "<from step 1>",
-    "email": "<user email>"
+    "email": "<user email>",
+    "terms_of_service": true
   }'
 ```
+
+> **Note:** You must accept the terms of service to register with Telnyx. You must indicate this acceptance by supplying `"terms_of_service": true` as a parameter on the request. The API will reject the request with a `400 Bad Request` if this field is missing or any value other than true.
 
 **Response:** Success message. A sign-in link is sent to the provided email.
 
