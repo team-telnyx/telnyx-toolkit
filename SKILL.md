@@ -16,6 +16,45 @@ export TELNYX_API_KEY="your_key_here"
 
 ---
 
+## 🚀 Getting Started
+
+Two companion skills handle account lifecycle. They are included with the toolkit and can also be installed independently via ClawHub.
+
+| Skill | Purpose | Path | Install standalone |
+|-------|---------|------|--------------------|
+| **Telnyx Bot Signup** | Create a new account or sign into an existing one (PoW challenge → email → API key) | `{baseDir}/getting-started/telnyx-bot-signup/` | `clawhub install telnyx-bot-signup` |
+| **Telnyx Freemium Upgrade** | Upgrade freemium → professional via GitHub or LinkedIn identity verification | `{baseDir}/getting-started/telnyx-freemium-upgrade/` | `clawhub install telnyx-freemium-upgrade` |
+
+### When to Use Account Signup
+
+Hand off to **telnyx-bot-signup** when ANY of these are true:
+
+- No API key exists (`TELNYX_API_KEY` not set, `~/.config/telnyx/config.json` missing)
+- API key is invalid/expired (401 errors from Telnyx API)
+- User wants to create a new Telnyx account
+- API key needs to be refreshed after an upgrade (same email, new key)
+
+> **Note:** The `bot_signup` endpoint handles both new and existing accounts transparently — just provide the user's email.
+
+### When to Use Account Upgrade
+
+Hand off to **telnyx-freemium-upgrade** when ANY of these are true:
+
+| Trigger | Detection |
+|---------|-----------|
+| Error `10039` | SMS send fails: "destination not verified" |
+| Error `D60` | Voice call fails: "destination not verified" |
+| Error `10038` | Feature blocked: "not available on current plan" |
+| Number limit hit | Second phone number purchase fails |
+| Cannot add funds | Balance top-up or payment method rejected |
+| Explicit request | User says "upgrade my account" |
+
+Before handing off, check `~/.telnyx/upgrade.json` — if `decision` is `APPROVED`, the account is already upgraded (retry the operation instead). If `PASS_TO_HUMAN`, it's under review (don't retry). See the telnyx-freemium-upgrade SKILL.md for full decision tree.
+
+Each skill has its own `SKILL.md` with complete instructions. Read the skill's SKILL.md before executing its workflow.
+
+---
+
 ## 🔧 Tools (Ready-to-Use)
 
 These are standalone utilities with scripts you can run directly:
@@ -59,6 +98,7 @@ python3 {baseDir}/tools/embeddings/search.py "your query" --bucket your-bucket
 
 # Index a file for search
 python3 {baseDir}/tools/embeddings/index.py upload /path/to/file.md
+
 ```
 
 Each tool has its own `SKILL.md` with detailed usage instructions.
@@ -127,6 +167,9 @@ Guides for building real-time voice apps on mobile and web:
 ```
 telnyx-toolkit/
 ├── SKILL.md              # This file (index)
+├── getting-started/      # Account creation & upgrade
+│   ├── telnyx-bot-signup/
+│   └── telnyx-freemium-upgrade/
 ├── tools/                # Ready-to-use utilities
 │   ├── missions/         # AI agent task tracking
 │   ├── stt/
