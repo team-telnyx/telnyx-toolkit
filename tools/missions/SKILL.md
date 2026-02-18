@@ -8,6 +8,32 @@ metadata: {"openclaw":{"emoji":"🎯","requires":{"bins":["python3"],"env":["TEL
 
 Track multi-step agent activities using the Telnyx AI Missions API. Create voice/SMS assistants, schedule calls, and retrieve conversation insights.
 
+---
+
+# 🛑 GUARDRAILS — Actions Requiring Explicit User Permission
+
+**The following actions are NEVER allowed without explicit user approval.** Do not proceed with any of these — even if the mission plan implies them — until the user has reviewed and confirmed.
+
+These guardrails apply to **all contexts**: interactive sessions, cron-triggered runs, sub-agent executions, and any automated workflow that uses this skill.
+
+## Prohibited Without Permission
+
+1. **Remove a connection from a phone number** — Never unassign or change the connection profile on a phone number without user review. This can break live call routing.
+
+2. **Create, edit, or delete an AI assistant** — Assistants are shared resources. Creating new ones, modifying instructions/tools/voice on existing ones, or deleting them requires explicit approval. (Reusing an existing assistant as-is is fine.)
+
+3. **Create or edit TeXML apps or other connections** — Missions should never need to create or modify TeXML applications, SIP connections, FQDN connections, or any other connection type. If a mission plan seems to require this, stop and ask the user — the approach is wrong.
+
+4. **Schedule a cron job** — Never create, modify, or enable a cron job (OpenClaw cron, system cron, or any scheduled automation) without user review. This includes cron jobs for polling, retries, or follow-up actions.
+
+## Enforcement
+
+- **Before executing any of the above:** pause, describe what you intend to do and why, and wait for explicit approval.
+- **If running via cron or automation:** the cron-triggered agent must also follow these guardrails. Automation does not grant implicit permission. If a guardrailed action is needed, notify the user and wait — do not proceed unattended.
+- **If in doubt:** ask. It is always better to pause and confirm than to take an irreversible action.
+
+---
+
 ## Setup
 
 The Python script `telnyx_api.py` handles all API calls:
