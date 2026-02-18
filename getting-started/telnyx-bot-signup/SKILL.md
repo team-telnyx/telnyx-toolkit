@@ -1,23 +1,14 @@
 ---
 name: telnyx-bot-signup
-description: Create a Telnyx bot account — solve proof-of-work challenge, register with email, verify, and generate API key. No external dependencies.
-metadata: {"openclaw":{"emoji":"📝","requires":{"bins":["python3","curl"],"env":[]},"primaryEnv":"TELNYX_API_KEY"}}
+description: Automated Telnyx bot account signup via Proof of Work challenge (production)
+metadata: {"openclaw":{"emoji":"🤖","requires":{"bins":["python3","curl"],"env":[]},"primaryEnv":"TELNYX_API_KEY"}}
 ---
 
-# Account Signup
+# Telnyx Bot Signup (Production)
 
 Create a new Telnyx bot account via the PoW-based signup flow on the **production** API (`https://api.telnyx.com`). Walks through challenge solving, account creation, email verification, and API key generation.
 
-## Quick Start
-
-```bash
-# 1. Get challenge, 2. Solve PoW, 3. Register, 4. Verify email, 5. Get API key
-# See full flow below
-```
-
----
-
-## Full Signup Flow
+## Flow
 
 Execute these steps in order.
 
@@ -44,7 +35,7 @@ Save all returned fields — they are needed in subsequent steps.
 
 ### Step 2: Solve Proof of Work
 
-> **Warning:** Solving the proof of work challenge is CPU-intensive and can take over a minute depending on difficulty. Attempting to solve it on the main bot thread may cause the bot to become unresponsive for the duration. Always run the solver on a separate agent, worker thread, or background process.
+> ⚠️ **Warning:** Solving the proof of work challenge is CPU-intensive and can take over a minute depending on difficulty. Attempting to solve it on the main bot thread may cause the bot to become unresponsive for the duration. Always run the solver on a separate agent, worker thread, or background process.
 
 Use the included `pow_solver.py` script:
 
@@ -92,7 +83,7 @@ If you do **not** have email access, ask the user:
 
 > Please check your email for a message from Telnyx with the subject **"Your Single Use Telnyx Portal sign-in link"**. Copy the sign-in link from the email and paste it here.
 >
-> **The link is single-use.** Do not click it in your browser first — once opened, it cannot be reused. Copy the URL directly and paste it here without visiting it.
+> ⚠️ **The link is single-use.** Do not click it in your browser first — once opened, it cannot be reused. Copy the URL directly and paste it here without visiting it.
 
 Once the user provides the link, make a GET request to it:
 
@@ -123,36 +114,8 @@ curl -s -X POST https://api.telnyx.com/v2/api_keys \
 
 The `data.api_key` value is the permanent API key for the new account. Present it to the user and advise them to store it securely.
 
----
-
-## PoW Solver Script
-
-```bash
-python3 {baseDir}/scripts/pow_solver.py "<nonce>" <bits> [algorithm]
-```
-
-| Argument | Required | Description |
-|----------|----------|-------------|
-| `nonce` | Yes | Nonce string from Step 1 |
-| `bits` | Yes | Leading zero bits required |
-| `algorithm` | No | Hash algorithm (default: `sha256`) |
-
-Outputs the integer solution to stdout.
-
----
-
-## Important Notes
+## Notes
 
 - The PoW challenge is a spam-prevention mechanism. Solving typically takes a few seconds.
 - The single-use sign-in link expires quickly — retrieve and use it promptly.
 - Email access is **optional**. The skill works with or without it — if unavailable, the user is prompted to paste the link manually.
-- The `bot_signup` endpoint works for both new and existing accounts — it sends a magic sign-in link to the user's email.
-
-## Troubleshooting
-
-| Issue | Solution |
-|-------|---------|
-| PoW solver runs too long | Difficulty is set server-side; wait for completion or retry for a new challenge |
-| Sign-in link already used | Request a new signup — the link is single-use |
-| Email not received | Check spam folder; wait 30 seconds and retry |
-| Invalid PoW solution | Ensure nonce and algorithm match the challenge response exactly |
