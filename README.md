@@ -25,11 +25,11 @@ Two companion skills handle account lifecycle. Included with the toolkit, also i
 
 | Skill | Purpose | Install standalone |
 |-------|---------|-------------------|
-| **[Account Signup](getting-started/account-signup)** | Create a new account or sign into an existing one (PoW challenge → email → API key) | `clawhub install account-signup` |
-| **[Account Upgrade](getting-started/account-upgrade)** | Upgrade freemium → professional via GitHub or LinkedIn identity verification | `clawhub install account-upgrade` |
+| **[Account Signup](getting-started/telnyx-bot-signup)** | Create a new account or sign into an existing one (PoW challenge → email → API key) | `clawhub install telnyx-bot-signup` |
+| **[Account Upgrade](getting-started/telnyx-freemium-upgrade)** | Upgrade freemium → professional via GitHub or LinkedIn identity verification | `clawhub install telnyx-freemium-upgrade` |
 
-- **Account Signup** — Use when no API key exists, the key is invalid/expired, or the user needs a new account. Works for both new and existing accounts.
-- **Account Upgrade** — Use when the account hits a freemium restriction (error codes `10039`, `D60`, `10038`, number limits, or inability to add funds).
+- **Telnyx Bot Signup** — Use when no API key exists, the key is invalid/expired, or the user needs a new account. Works for both new and existing accounts.
+- **Telnyx Freemium Upgrade** — Use when the account hits a freemium restriction (error codes `10039`, `D60`, `10038`, number limits, or inability to add funds).
 
 See each skill's `SKILL.md` for complete instructions.
 
@@ -129,8 +129,8 @@ Guides for building real-time voice apps on mobile and web:
 telnyx-toolkit/
 ├── SKILL.md              # ClawHub skill definition
 ├── getting-started/      # Account creation & upgrade
-│   ├── account-signup/
-│   └── account-upgrade/
+│   ├── telnyx-bot-signup/
+│   └── telnyx-freemium-upgrade/
 ├── tools/                # Ready-to-use utilities
 │   ├── stt/
 │   ├── tts/

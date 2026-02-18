@@ -22,12 +22,12 @@ Two companion skills handle account lifecycle. They are included with the toolki
 
 | Skill | Purpose | Path | Install standalone |
 |-------|---------|------|--------------------|
-| **Account Signup** | Create a new account or sign into an existing one (PoW challenge → email → API key) | `{baseDir}/getting-started/account-signup/` | `clawhub install account-signup` |
-| **Account Upgrade** | Upgrade freemium → professional via GitHub or LinkedIn identity verification | `{baseDir}/getting-started/account-upgrade/` | `clawhub install account-upgrade` |
+| **Telnyx Bot Signup** | Create a new account or sign into an existing one (PoW challenge → email → API key) | `{baseDir}/getting-started/telnyx-bot-signup/` | `clawhub install telnyx-bot-signup` |
+| **Telnyx Freemium Upgrade** | Upgrade freemium → professional via GitHub or LinkedIn identity verification | `{baseDir}/getting-started/telnyx-freemium-upgrade/` | `clawhub install telnyx-freemium-upgrade` |
 
 ### When to Use Account Signup
 
-Hand off to **account-signup** when ANY of these are true:
+Hand off to **telnyx-bot-signup** when ANY of these are true:
 
 - No API key exists (`TELNYX_API_KEY` not set, `~/.config/telnyx/config.json` missing)
 - API key is invalid/expired (401 errors from Telnyx API)
@@ -38,7 +38,7 @@ Hand off to **account-signup** when ANY of these are true:
 
 ### When to Use Account Upgrade
 
-Hand off to **account-upgrade** when ANY of these are true:
+Hand off to **telnyx-freemium-upgrade** when ANY of these are true:
 
 | Trigger | Detection |
 |---------|-----------|
@@ -49,7 +49,7 @@ Hand off to **account-upgrade** when ANY of these are true:
 | Cannot add funds | Balance top-up or payment method rejected |
 | Explicit request | User says "upgrade my account" |
 
-Before handing off, check `~/.telnyx/upgrade.json` — if `decision` is `APPROVED`, the account is already upgraded (retry the operation instead). If `PASS_TO_HUMAN`, it's under review (don't retry). See the account-upgrade SKILL.md for full decision tree.
+Before handing off, check `~/.telnyx/upgrade.json` — if `decision` is `APPROVED`, the account is already upgraded (retry the operation instead). If `PASS_TO_HUMAN`, it's under review (don't retry). See the telnyx-freemium-upgrade SKILL.md for full decision tree.
 
 Each skill has its own `SKILL.md` with complete instructions. Read the skill's SKILL.md before executing its workflow.
 
@@ -168,8 +168,8 @@ Guides for building real-time voice apps on mobile and web:
 telnyx-toolkit/
 ├── SKILL.md              # This file (index)
 ├── getting-started/      # Account creation & upgrade
-│   ├── account-signup/
-│   └── account-upgrade/
+│   ├── telnyx-bot-signup/
+│   └── telnyx-freemium-upgrade/
 ├── tools/                # Ready-to-use utilities
 │   ├── missions/         # AI agent task tracking
 │   ├── stt/
