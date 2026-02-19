@@ -179,7 +179,7 @@ Examples:
 # Reuse or create an assistant
 python telnyx_api.py list-assistants --name=<relevant>
 # Schedule the call
-python telnyx_api.py schedule-call <assistant_id> <to> <from> <datetime> <mission_id> <run_id>
+python telnyx_api.py schedule-call <assistant_id> <to> <from> <datetime> <mission_id> <run_id> <step_id>
 # Poll for completion
 python telnyx_api.py get-event <assistant_id> <event_id>
 # Get insights
@@ -396,7 +396,7 @@ python telnyx_api.py log-event <mission_id> <run_id> tool_call "Searching for wi
 ### Step 4.1: Schedule a Phone Call
 
 ```bash
-python telnyx_api.py schedule-call <assistant_id> "+15551234567" "+15559876543" "2024-12-01T14:30:00Z" <mission_id> <run_id>
+python telnyx_api.py schedule-call <assistant_id> "+15551234567" "+15559876543" "2024-12-01T14:30:00Z" <mission_id> <run_id> <step_id>
 ```
 
 **Save the returned `scheduled_event_id`**.
@@ -404,7 +404,7 @@ python telnyx_api.py schedule-call <assistant_id> "+15551234567" "+15559876543" 
 ### Step 4.2: Schedule an SMS
 
 ```bash
-python telnyx_api.py schedule-sms <assistant_id> "+15551234567" "+15559876543" "2024-12-01T14:30:00Z" "Hi! I am reaching out on behalf of [COMPANY] to inquire about your window cleaning rates for commercial buildings. Could you share your pricing?"
+python telnyx_api.py schedule-sms <assistant_id> "+15551234567" "+15559876543" "2024-12-01T14:30:00Z" "Hi! I am reaching out on behalf of [COMPANY] to inquire about your window cleaning rates for commercial buildings. Could you share your pricing?" <mission_id> <run_id> <step_id>
 ```
 
 ### Step 4.3: Log Each Scheduled Event
@@ -483,7 +483,7 @@ python telnyx_api.py save-memory "<slug>" "call_tracker" '{"+15551234567": {"sta
 python telnyx_api.py log-event "$MISSION_ID" "$RUN_ID" custom "Call not answered (busy), scheduling retry #2" "calls" '{"phone": "+15551234567", "call_status": "busy", "attempt": 1}'
 
 # Schedule retry
-python telnyx_api.py schedule-call <assistant_id> "+15551234567" "+15559876543" "2024-12-02T10:00:00Z" <mission_id> <run_id>
+python telnyx_api.py schedule-call <assistant_id> "+15551234567" "+15559876543" "2024-12-02T10:00:00Z" <mission_id> <run_id> <step_id>
 ```
 
 ---
@@ -693,8 +693,8 @@ python telnyx_api.py get-available-phone
 python telnyx_api.py assign-phone <phone_id> <connection_id> [voice|sms]
 
 # Scheduled Events
-python telnyx_api.py schedule-call <assistant_id> <to_phone> <from_phone> <datetime> <mission_id> <run_id> [dynamic_variables_json]
-python telnyx_api.py schedule-sms <assistant_id> <to_phone> <from_phone> <datetime> <text> [dynamic_variables_json]
+python telnyx_api.py schedule-call <assistant_id> <to_phone> <from_phone> <datetime> <mission_id> <run_id> [step_id] [dynamic_variables_json]
+python telnyx_api.py schedule-sms <assistant_id> <to_phone> <from_phone> <datetime> <text> [mission_id] [mission_run_id] [step_id] [dynamic_variables_json]
 python telnyx_api.py get-event <assistant_id> <event_id>
 python telnyx_api.py cancel-scheduled-event <assistant_id> <event_id>
 python telnyx_api.py list-events-assistant <assistant_id>
@@ -792,7 +792,7 @@ python telnyx_api.py update-step "mis_abc123" "run_def456" "calls" "in_progress"
 python telnyx_api.py log-event "mis_abc123" "run_def456" step_started "Starting: Schedule calls" "calls"
 
 # 8. Schedule calls
-python telnyx_api.py schedule-call "$ASSISTANT_ID" "+13125551234" "$AGENT_PHONE" "2024-12-01T15:00:00Z" "$MISSION_ID" "$RUN_ID"
+python telnyx_api.py schedule-call "$ASSISTANT_ID" "+13125551234" "$AGENT_PHONE" "2024-12-01T15:00:00Z" "$MISSION_ID" "$RUN_ID" "$STEP_ID"
 
 # Output: Scheduled call: evt_abc123
 
@@ -1103,17 +1103,17 @@ Calls MUST run serially. Each call's strategy depends on previous results. You'r
 #    Set dynamic_variables: {"best_quote": null, "best_company": null}
 
 # 2. Call roofer 1 (no leverage yet — best_quote is null, so that section is skipped)
-#    python telnyx_api.py schedule-call <id> "+1555..." "+1555..." "<time>" $MISSION_ID $RUN_ID
+#    python telnyx_api.py schedule-call <id> "+1555..." "+1555..." "<time>" $MISSION_ID $RUN_ID $STEP_ID
 #    → get insight → save quote ($500)
 #    python telnyx_api.py save-memory "<slug>" "best_quote" '{"amount": 500, "company": "Roofer 1"}'
 
 # 3. Call roofer 2 — pass dynamic variables via scheduled event:
-#    python telnyx_api.py schedule-call <id> "+1555..." "+1555..." "<time>" $MISSION_ID $RUN_ID \
+#    python telnyx_api.py schedule-call <id> "+1555..." "+1555..." "<time>" $MISSION_ID $RUN_ID $STEP_ID \
 #      '{"best_quote": "$500", "best_company": "Roofer 1"}'
 #    → get insight → if better ($420), update best_quote
 
 # 4. Call roofer 3 — pass updated context:
-#    python telnyx_api.py schedule-call <id> "+1555..." "+1555..." "<time>" $MISSION_ID $RUN_ID \
+#    python telnyx_api.py schedule-call <id> "+1555..." "+1555..." "<time>" $MISSION_ID $RUN_ID $STEP_ID \
 #      '{"best_quote": "$420", "best_company": "Roofer 2"}'
 
 # 5. Repeat: schedule with new dynamic vars → poll → insight → update state → next
@@ -1313,7 +1313,7 @@ Use **dynamic variables** passed via the scheduled events API to inject context 
 #    {{/best_quote}}"
 
 # After getting a quote of $350 from call 1, pass it as a dynamic variable on call 2:
-python telnyx_api.py schedule-call <assistant_id> "+1555..." "+1555..." "<time>" <mission_id> <run_id> '{"best_quote": "$350", "best_company": "ABC Roofing"}'
+python telnyx_api.py schedule-call <assistant_id> "+1555..." "+1555..." "<time>" <mission_id> <run_id> <step_id> '{"best_quote": "$350", "best_company": "ABC Roofing"}'
 ```
 
 ### 2. Human Approval Gates

@@ -563,18 +563,22 @@ def schedule_call(
     scheduled_time: str,
     mission_id: str,
     mission_run_id: str,
+    mission_step_id: str = None,
     dynamic_variables: dict = None,
 ) -> str:
     """Schedule a phone call. Returns scheduled_event_id."""
+    metadata = {
+        "mission_id": mission_id,
+        "mission_run_id": mission_run_id,
+    }
+    if mission_step_id:
+        metadata["mission_step_id"] = mission_step_id
     data = {
         "telnyx_conversation_channel": "phone_call",
         "telnyx_end_user_target": end_user_phone,
         "telnyx_agent_target": agent_phone,
         "scheduled_at_fixed_datetime": scheduled_time,
-        "conversation_metadata": {
-            "mission_id": mission_id,
-            "mission_run_id": mission_run_id,
-        },
+        "conversation_metadata": metadata,
     }
     if dynamic_variables:
         data["dynamic_variables"] = dynamic_variables
@@ -593,9 +597,19 @@ def schedule_sms(
     agent_phone: str,
     scheduled_time: str,
     text: str,
+    mission_id: str = None,
+    mission_run_id: str = None,
+    mission_step_id: str = None,
     dynamic_variables: dict = None,
 ) -> str:
     """Schedule an SMS. Returns scheduled_event_id."""
+    metadata = {}
+    if mission_id:
+        metadata["mission_id"] = mission_id
+    if mission_run_id:
+        metadata["mission_run_id"] = mission_run_id
+    if mission_step_id:
+        metadata["mission_step_id"] = mission_step_id
     data = {
         "telnyx_conversation_channel": "sms_chat",
         "telnyx_end_user_target": end_user_phone,
@@ -603,6 +617,8 @@ def schedule_sms(
         "scheduled_at_fixed_datetime": scheduled_time,
         "text": text,
     }
+    if metadata:
+        data["conversation_metadata"] = metadata
     if dynamic_variables:
         data["dynamic_variables"] = dynamic_variables
 
@@ -1072,8 +1088,8 @@ Commands:
     assign-phone <phone_id> <connection_id> [voice|sms]
 
   Scheduled Events:
-    schedule-call <assistant_id> <to_phone> <from_phone> <datetime> <mission_id> <run_id> [dynamic_variables_json]
-    schedule-sms <assistant_id> <to_phone> <from_phone> <datetime> <text> [dynamic_variables_json]
+    schedule-call <assistant_id> <to_phone> <from_phone> <datetime> <mission_id> <run_id> [step_id] [dynamic_variables_json]
+    schedule-sms <assistant_id> <to_phone> <from_phone> <datetime> <text> [mission_id] [mission_run_id] [step_id] [dynamic_variables_json]
     get-event <assistant_id> <event_id>
     cancel-scheduled-event <assistant_id> <event_id>
     list-events-assistant <assistant_id>
@@ -1120,8 +1136,8 @@ Commands:
 Examples:
   python telnyx_api.py create-mission "Find contractors" "Call and negotiate"
   python telnyx_api.py create-run mis_abc123 '{"request": "Find window washers"}'
-  python telnyx_api.py schedule-call ast_xyz "+15551234567" "+15559876543" "2024-12-01T15:00:00Z" mis_abc run_def
-  python telnyx_api.py schedule-call ast_xyz "+15551234567" "+15559876543" "2024-12-01T15:00:00Z" mis_abc run_def '{"best_quote": "$350"}'
+  python telnyx_api.py schedule-call ast_xyz "+15551234567" "+15559876543" "2024-12-01T15:00:00Z" mis_abc run_def step_1
+  python telnyx_api.py schedule-call ast_xyz "+15551234567" "+15559876543" "2024-12-01T15:00:00Z" mis_abc run_def step_1 '{"best_quote": "$350"}'
 """)
 
 
@@ -1246,13 +1262,24 @@ def main():
 
         # Scheduled Events
         elif cmd == "schedule-call":
-            # schedule-call <assistant_id> <to> <from> <datetime> <mission_id> <run_id> [dynamic_variables_json]
-            dyn_vars = json.loads(args[6]) if len(args) > 6 else None
-            schedule_call(args[0], args[1], args[2], args[3], args[4], args[5], dynamic_variables=dyn_vars)
+            # schedule-call <assistant_id> <to> <from> <datetime> <mission_id> <run_id> [step_id] [dynamic_variables_json]
+            step_id = None
+            dyn_vars = None
+            if len(args) > 6:
+                # If arg 6 looks like JSON, it's dynamic_variables; otherwise it's step_id
+                try:
+                    dyn_vars = json.loads(args[6])
+                except (json.JSONDecodeError, ValueError):
+                    step_id = args[6]
+                    dyn_vars = json.loads(args[7]) if len(args) > 7 else None
+            schedule_call(args[0], args[1], args[2], args[3], args[4], args[5], mission_step_id=step_id, dynamic_variables=dyn_vars)
         elif cmd == "schedule-sms":
-            # schedule-sms <assistant_id> <to> <from> <datetime> <text> [dynamic_variables_json]
-            dyn_vars = json.loads(args[5]) if len(args) > 5 else None
-            schedule_sms(args[0], args[1], args[2], args[3], args[4], dynamic_variables=dyn_vars)
+            # schedule-sms <assistant_id> <to> <from> <datetime> <text> [mission_id] [mission_run_id] [step_id] [dynamic_variables_json]
+            mission_id = args[5] if len(args) > 5 else None
+            run_id = args[6] if len(args) > 6 else None
+            step_id = args[7] if len(args) > 7 else None
+            dyn_vars = json.loads(args[8]) if len(args) > 8 else None
+            schedule_sms(args[0], args[1], args[2], args[3], args[4], mission_id=mission_id, mission_run_id=run_id, mission_step_id=step_id, dynamic_variables=dyn_vars)
         elif cmd == "get-event":
             get_scheduled_event(args[0], args[1])
         elif cmd == "cancel-scheduled-event":
