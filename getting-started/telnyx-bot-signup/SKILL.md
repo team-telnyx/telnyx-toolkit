@@ -96,6 +96,25 @@ curl -s -L "<link-from-user>"
 
 The response (or redirect) provides a temporary **session token**.
 
+#### Resend Magic Link
+
+If the verification email did not arrive or the link expired, resend it:
+
+```bash
+curl -s -X POST https://api.telnyx.com/v2/bot_signup/resend_magic_link -H "Content-Type: application/json" -d '{"email": "<user email>"}'
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "message": "If an account with that email exists, a new magic link has been sent."
+  }
+}
+```
+
+**Rate limiting:** Max 3 resends per account, with a 60-second cooldown between resends. The endpoint always returns 200 OK regardless of whether the email exists, the retry cap is exceeded, or the cooldown is active (to prevent email enumeration).
+
 ### Step 5: Create API Key
 
 ```bash
