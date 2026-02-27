@@ -59,7 +59,7 @@ Each skill has its own `SKILL.md` with complete instructions. Read the skill's S
 
 Use these endpoints to check balance and add funds programmatically.
 
-> **Prerequisite:** The user must have a payment method (credit card, PayPal, or ACH) saved in the [Telnyx Portal](https://portal.telnyx.com) before any top-up can work. There is no API to add a payment method — this must be done by the user in the portal. If the user has never added a payment method, direct them to the portal first.
+> **Important:** Top-ups charge the payment method (credit card, PayPal, or ACH) saved in the [Telnyx Portal](https://portal.telnyx.com). There is no API to add a payment method — this is done by the user in the portal. Do not prompt the user about this upfront — just attempt the top-up when needed. If it returns 403, that's when you inform the user they need to add a payment method in the portal.
 
 ### Check Balance
 
