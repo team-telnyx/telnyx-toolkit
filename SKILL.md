@@ -46,12 +46,127 @@ Hand off to **telnyx-freemium-upgrade** when ANY of these are true:
 | Error `D60` | Voice call fails: "destination not verified" |
 | Error `10038` | Feature blocked: "not available on current plan" |
 | Number limit hit | Second phone number purchase fails |
-| Cannot add funds | Balance top-up or payment method rejected |
+| Cannot add funds | Freemium account cannot add payment method or top up |
 | Explicit request | User says "upgrade my account" |
 
 Before handing off, check `~/.telnyx/upgrade.json` — if `decision` is `APPROVED`, the account is already upgraded (retry the operation instead). If `PASS_TO_HUMAN`, it's under review (don't retry). See the telnyx-freemium-upgrade SKILL.md for full decision tree.
 
 Each skill has its own `SKILL.md` with complete instructions. Read the skill's SKILL.md before executing its workflow.
+
+---
+
+## 💳 Balance & Payments
+
+Use these endpoints to check balance and add funds programmatically. A payment method must already be on file (configured via the [Telnyx Portal](https://portal.telnyx.com)).
+
+### Check Balance
+
+```bash
+curl -s https://api.telnyx.com/v2/balance -H "Authorization: Bearer $TELNYX_API_KEY"
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "balance": "300.00",
+    "credit_limit": "100.00",
+    "available_credit": "400.00",
+    "currency": "USD"
+  }
+}
+```
+
+### Check Auto-Recharge Status
+
+Check whether auto-recharge is enabled. If it is, the account will top up automatically when balance drops below the threshold — the agent can just wait and retry instead of manually topping up.
+
+```bash
+curl -s https://api.telnyx.com/v2/payment/auto_recharge_prefs -H "Authorization: Bearer $TELNYX_API_KEY"
+```
+
+**Response:**
+```json
+{
+  "data": {
+    "enabled": true,
+    "threshold_amount": "100.00",
+    "recharge_amount": "100.00",
+    "preference": "credit_paypal"
+  }
+}
+```
+
+If `enabled` is `true` and the agent hits `20100`, wait briefly and retry — auto-recharge should handle it. If `enabled` is `false`, proceed with the top-up endpoint below.
+
+> **Note:** Enabling or configuring auto-recharge is a human decision — use the [Telnyx Portal](https://portal.telnyx.com) to change these settings.
+
+### Add Funds (Top Up)
+
+Charges the stored payment method on file. Requires a payment method already configured in the Telnyx Portal.
+
+```bash
+curl -s -X POST https://api.telnyx.com/v2/payment/stored_payment_transactions -H "Authorization: Bearer $TELNYX_API_KEY" -H "Content-Type: application/json" -d '{"amount": "100.00"}'
+```
+
+The `amount` field is in dollars and cents (e.g., `"100.00"`, `"25.50"`).
+
+**Response:**
+```json
+{
+  "data": {
+    "id": "de06811a-2e43-4561-af5a-7d0a26e20aaa",
+    "record_type": "transaction",
+    "amount_cents": 10000,
+    "processor_status": "submitted_for_settlement",
+    "amount_currency": "USD",
+    "created_at": "2026-02-25T10:00:00Z",
+    "auto_recharge": false
+  }
+}
+```
+
+**Error handling:**
+
+| Status | Meaning | Action |
+|--------|---------|--------|
+| 200 | Transaction submitted | Wait for settlement, then retry the original operation |
+| 401 | Unauthorized | API key is invalid — hand off to telnyx-bot-signup |
+| 403 | Forbidden | No stored payment method on file — direct user to [Telnyx Portal](https://portal.telnyx.com) to add one |
+| 422 | Invalid amount | Amount must be a string with dollars and cents (e.g., `"120.00"`) |
+
+### Payment Error Decision Tree
+
+When a Telnyx API call fails with a payment-related error, follow this tree. The agent does not need to know the account tier upfront — the error codes and response codes reveal the right path.
+
+**Step 1: Identify the error**
+
+| Error Code | Meaning | Go to |
+|-----------|---------|-------|
+| `10038` / `10039` | Feature not permitted / limited | Step 2 (upgrade) |
+| `20100` / `20012` | Insufficient Funds / Account inactive | Step 3 (try top-up) |
+
+> **Note:** The API may return `20100` (Insufficient Funds) even on freemium accounts where `10038`/`10039` would be more accurate. Don't assume `20100` means the account is professional — always attempt the top-up and let the response tell you.
+
+**Step 2: Feature restriction → Upgrade first**
+
+Errors `10038`/`10039` mean the account is freemium. Freemium accounts cannot add payment methods or top up — they must upgrade first.
+
+1. Hand off to **telnyx-freemium-upgrade** → upgrade to professional
+2. User adds payment method at [Telnyx Portal](https://portal.telnyx.com)
+3. Then proceed to Step 3 if funds are needed
+
+**Step 3: Insufficient funds → Try to top up**
+
+Always attempt the top-up regardless of account tier — the response will reveal the right path.
+
+1. `GET /v2/balance` — check current available credit
+2. `GET /v2/payment/auto_recharge_prefs` — if `enabled: true`, wait briefly and retry (auto-recharge will handle it). If it does, stop here
+3. If auto-recharge is off: `POST /v2/payment/stored_payment_transactions` — top up via API
+4. **If top-up returns 200** → retry the original operation
+5. **If top-up returns 403** → no payment method on file. This is the real signal:
+   - Check `~/.telnyx/upgrade.json` — if `decision` is `APPROVED`, the account is professional but has no payment method → direct user to [Telnyx Portal](https://portal.telnyx.com) to add one
+   - Otherwise, the account is likely freemium → hand off to **telnyx-freemium-upgrade** (Step 2)
 
 ---
 
