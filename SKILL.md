@@ -57,7 +57,9 @@ Each skill has its own `SKILL.md` with complete instructions. Read the skill's S
 
 ## 💳 Balance & Payments
 
-Use these endpoints to check balance and add funds programmatically. A payment method must already be on file (configured via the [Telnyx Portal](https://portal.telnyx.com)).
+Use these endpoints to check balance and add funds programmatically.
+
+> **Prerequisite:** The user must have a payment method (credit card, PayPal, or ACH) saved in the [Telnyx Portal](https://portal.telnyx.com) before any top-up can work. There is no API to add a payment method — this must be done by the user in the portal. If the user has never added a payment method, direct them to the portal first.
 
 ### Check Balance
 
