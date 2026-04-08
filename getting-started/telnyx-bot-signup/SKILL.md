@@ -42,6 +42,10 @@ Save all returned fields — they are needed in subsequent steps.
 
 > ⚠️ **Warning:** Solving the proof of work challenge is CPU-intensive and can take over a minute depending on the difficulty. Attempting to solve it on the main bot thread may cause the bot to become unresponsive for the duration. Always run the solver on a separate agent, worker thread, or background process.
 
+Two solvers are available. The Python solver is the default and works out of the box on most platforms. The C solver is an optional opt-in for users who need maximum speed (typically 10–50x faster than Python).
+
+#### Python Solver (default)
+
 Use the included `pow_solver.py` script:
 
 ```bash
@@ -64,7 +68,46 @@ python3 {baseDir}/scripts/pow_solver.py "abc123..." 16 scrypt '{"n": 4096, "r": 
 > ```bash
 > brew install python   # then use /opt/homebrew/bin/python3
 > ```
-> Alternatively, run the solver on Linux.
+> Alternatively, run the solver on Linux, or use the C solver compiled against Homebrew OpenSSL (see below).
+
+#### C Solver (optional, faster)
+
+The C solver is **10–50x faster** than the Python solver and is useful when solving high-difficulty challenges or when latency matters. It is opt-in — compile it before use.
+
+**Prerequisites:**
+- A C99 compiler (`cc` / `gcc` / `clang`)
+- OpenSSL development headers (`libssl-dev` on Debian/Ubuntu, or `brew install openssl` on macOS)
+
+**Compile:**
+
+```bash
+cd {baseDir}/scripts
+make
+```
+
+The Makefile automatically detects the OpenSSL installation:
+- **macOS with Homebrew OpenSSL:** `make` auto-finds `/opt/homebrew/opt/openssl`. Both SHA-256 and scrypt are supported.
+- **macOS with system LibreSSL only:** SHA-256 works; scrypt is disabled with a clear error message. Install Homebrew OpenSSL for scrypt support.
+- **Linux:** Both SHA-256 and scrypt work with the system OpenSSL.
+
+To specify an OpenSSL prefix manually:
+```bash
+make OPENSSL_PREFIX=/usr/local/opt/openssl
+```
+
+**Run:**
+
+```bash
+# SHA-256 (default)
+./{baseDir}/scripts/pow_solver "abc123..." 22
+
+# scrypt
+./{baseDir}/scripts/pow_solver "abc123..." 16 scrypt '{"n":4096,"r":8,"p":1}'
+```
+
+The interface is identical to the Python solver — same argument order, same stdout output, same stderr progress dots.
+
+**Fallback:** If compilation fails or scrypt is unavailable, fall back to the Python solver. The Python solver is always the safe default.
 
 **Future algorithms:** If the server returns an `algorithm` value not listed above, use the SHA-256 and scrypt implementations in `pow_solver.py` as a reference. The loop structure is always the same — only the hash primitive and `challenge_config` parameters change.
 
