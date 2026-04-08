@@ -1,7 +1,7 @@
 ---
 name: telnyx-bot-signup
 description: Automated Telnyx bot account signup via Proof of Work challenge
-metadata: {"ocplatform":{"emoji":"🤖","requires":{"bins":["python3","curl"],"env":[]},"primaryEnv":"TELNYX_API_KEY"}}
+metadata: {"openclaw":{"emoji":"🤖","requires":{"bins":["python3","curl"],"env":[]},"primaryEnv":"TELNYX_API_KEY"}}
 ---
 
 # Telnyx Bot Signup
