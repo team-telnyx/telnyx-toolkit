@@ -25,7 +25,7 @@ Two companion skills handle account lifecycle. Included with the toolkit, also i
 
 | Skill | Purpose | Install standalone |
 |-------|---------|-------------------|
-| **[Account Signup](getting-started/telnyx-bot-signup)** | Create a new account or sign into an existing one (PoW challenge → email → API key) | `clawhub install telnyx-bot-signup` |
+| **[Account Signup](getting-started/telnyx-bot-signup)** | Create a new account or sign into an existing one (PoW challenge → email → API key). Includes Python and C PoW solvers; C solver is 10–50x faster (optional, compile with `make`). | `clawhub install telnyx-bot-signup` |
 | **[Account Upgrade](getting-started/telnyx-freemium-upgrade)** | Upgrade freemium → professional via GitHub or LinkedIn identity verification | `clawhub install telnyx-freemium-upgrade` |
 
 - **Telnyx Bot Signup** — Use when no API key exists, the key is invalid/expired, or the user needs a new account. Works for both new and existing accounts.

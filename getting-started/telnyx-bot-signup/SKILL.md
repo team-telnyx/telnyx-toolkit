@@ -25,6 +25,7 @@ curl -s -X POST https://api.telnyx.com/v2/pow_signup_challenge
     "nonce": "<string>",
     "algorithm": "sha256",
     "leading_zero_bits": <int>,
+    "challenge_config": {},
     "terms_and_conditions_url": "<url>",
     "privacy_policy_url": "<url>"
   }
@@ -33,17 +34,82 @@ curl -s -X POST https://api.telnyx.com/v2/pow_signup_challenge
 
 Save all returned fields — they are needed in subsequent steps.
 
+**`algorithm`** indicates which hash function to use. Currently `"sha256"` or `"scrypt"`. Future algorithms may be added; use the existing implementations as a reference if you encounter one.
+
+**`challenge_config`** carries algorithm-specific parameters. For SHA-256 it is empty (`{}`). For scrypt it contains `{"n": <int>, "r": <int>, "p": <int>}` — pass these to the solver.
+
 ### Step 2: Solve Proof of Work
 
-> ⚠️ **Warning:** Solving the proof of work challenge is CPU-intensive and can take over a minute depending on difficulty. Attempting to solve it on the main bot thread may cause the bot to become unresponsive for the duration. Always run the solver on a separate agent, worker thread, or background process.
+> ⚠️ **Warning:** Solving the proof of work challenge is CPU-intensive and can take over a minute depending on the difficulty. Attempting to solve it on the main bot thread may cause the bot to become unresponsive for the duration. Always run the solver on a separate agent, worker thread, or background process.
+
+Two solvers are available. The Python solver is the default and works out of the box on most platforms. The C solver is an optional opt-in for users who need maximum speed (typically 10–50x faster than Python).
+
+#### Python Solver (default)
 
 Use the included `pow_solver.py` script:
 
 ```bash
-python3 {baseDir}/scripts/pow_solver.py "<nonce>" <leading_zero_bits> <algorithm>
+python3 {baseDir}/scripts/pow_solver.py "<nonce>" <leading_zero_bits> [algorithm] [challenge_config_json]
 ```
 
-The script outputs the integer solution to stdout. This finds a value where `hash(nonce + solution)` has the required number of leading zero bits.
+The script outputs the integer solution to stdout. It finds a value `i` where `hash(nonce + str(i))` has at least `leading_zero_bits` leading zero bits.
+
+**Examples:**
+
+```bash
+# SHA-256 (default — challenge_config is empty or omitted)
+python3 {baseDir}/scripts/pow_solver.py "abc123..." 22 sha256 '{}'
+
+# scrypt
+python3 {baseDir}/scripts/pow_solver.py "abc123..." 16 scrypt '{"n": 4096, "r": 8, "p": 1}'
+```
+
+> **macOS note for scrypt:** macOS ships Python linked against LibreSSL, which does not expose `hashlib.scrypt`. If you see an error about `hashlib.scrypt` not being available, install an OpenSSL-linked Python:
+> ```bash
+> brew install python   # then use /opt/homebrew/bin/python3
+> ```
+> Alternatively, run the solver on Linux, or use the C solver compiled against Homebrew OpenSSL (see below).
+
+#### C Solver (optional, faster)
+
+The C solver is **10–50x faster** than the Python solver and is useful when solving high-difficulty challenges or when latency matters. It is opt-in — compile it before use.
+
+**Prerequisites:**
+- A C99 compiler (`cc` / `gcc` / `clang`)
+- OpenSSL development headers (`libssl-dev` on Debian/Ubuntu, or `brew install openssl` on macOS)
+
+**Compile:**
+
+```bash
+cd {baseDir}/scripts
+make
+```
+
+The Makefile automatically detects the OpenSSL installation:
+- **macOS with Homebrew OpenSSL:** `make` auto-finds `/opt/homebrew/opt/openssl`. Both SHA-256 and scrypt are supported.
+- **macOS with system LibreSSL only:** SHA-256 works; scrypt is disabled with a clear error message. Install Homebrew OpenSSL for scrypt support.
+- **Linux:** Both SHA-256 and scrypt work with the system OpenSSL.
+
+To specify an OpenSSL prefix manually:
+```bash
+make OPENSSL_PREFIX=/usr/local/opt/openssl
+```
+
+**Run:**
+
+```bash
+# SHA-256 (default)
+./{baseDir}/scripts/pow_solver "abc123..." 22
+
+# scrypt
+./{baseDir}/scripts/pow_solver "abc123..." 16 scrypt '{"n":4096,"r":8,"p":1}'
+```
+
+The interface is identical to the Python solver — same argument order, same stdout output, same stderr progress dots.
+
+**Fallback:** If compilation fails or scrypt is unavailable, fall back to the Python solver. The Python solver is always the safe default.
+
+**Future algorithms:** If the server returns an `algorithm` value not listed above, use the SHA-256 and scrypt implementations in `pow_solver.py` as a reference. The loop structure is always the same — only the hash primitive and `challenge_config` parameters change.
 
 ### Step 3: Submit Bot Signup
 
@@ -62,17 +128,17 @@ curl -s -X POST https://api.telnyx.com/v2/bot_signup \
   }'
 ```
 
-> **Note:** You must accept the terms of service to register with Telnyx. You must indicate this acceptance by supplying `"terms_of_service": true` as a parameter on the request. The API will reject the request with a `400 Bad Request` if this field is missing or any value other than true.
+> **Note:** You must accept the terms of service to register with Telnyx. You must indicate this acceptance by supplying `"terms_of_service": true` as a parameter on the request. The API will reject the request with a `400 Bad Request` if this field is missing or set to any value other than `true`.
 
 **Response:** Success message. A sign-in link is sent to the provided email.
 
 ### Step 4: Get Session Token from Email
 
-Wait 10-30 seconds for the verification email to arrive.
+Wait 10–30 seconds for the verification email to arrive.
 
 #### Path A: Agent Has Email Access
 
-If you have email access (e.g. the `google-workspace` skill), search for a message with subject **"Your Single Use Telnyx Portal sign-in link"**, extract the single-use URL from the body, and GET it:
+If you have email access, search for a message with subject **"Your Single Use Telnyx Portal sign-in link"**, extract the single-use URL from the body, and GET it:
 
 ```bash
 curl -s -L "<single-use-link-from-email>"
@@ -101,7 +167,9 @@ The response (or redirect) provides a temporary **session token**.
 If the verification email did not arrive or the link expired, resend it:
 
 ```bash
-curl -s -X POST https://api.telnyx.com/v2/bot_signup/resend_magic_link -H "Content-Type: application/json" -d '{"email": "<user email>"}'
+curl -s -X POST https://api.telnyx.com/v2/bot_signup/resend_magic_link \
+  -H "Content-Type: application/json" \
+  -d '{"email": "<user email>"}'
 ```
 
 **Response:**
@@ -138,6 +206,6 @@ The `data.api_key` value is the permanent API key for the new account. Present i
 
 ## Notes
 
-- The PoW challenge is a spam-prevention mechanism. Solving typically takes a few seconds.
+- The PoW challenge is a spam-prevention mechanism. Solving is CPU-intensive and may take a while depending on the algorithm and difficulty.
 - The single-use sign-in link expires quickly — retrieve and use it promptly.
 - Email access is **optional**. The skill works with or without it — if unavailable, the user is prompted to paste the link manually.
