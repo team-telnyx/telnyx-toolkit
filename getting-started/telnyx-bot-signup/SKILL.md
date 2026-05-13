@@ -1,126 +1,55 @@
 ---
 name: telnyx-bot-signup
-description: Automated Telnyx bot account signup via Proof of Work challenge
-metadata: {"openclaw":{"emoji":"🤖","requires":{"bins":["python3","curl"],"env":[]},"primaryEnv":"TELNYX_API_KEY"}}
+description: Automated Telnyx bot account signup via obfuscated mathematical challenge
+metadata: {"openclaw":{"emoji":"🤖","requires":{"bins":["curl"],"env":[]},"primaryEnv":"TELNYX_API_KEY"}}
 ---
 
 # Telnyx Bot Signup
 
-Create a new Telnyx bot account via the PoW-based signup flow (`https://api.telnyx.com`). Walks through challenge solving, account creation, email verification, and API key generation.
+Create a new Telnyx bot account via the bot challenge signup flow. Walks through challenge solving, account creation, email verification, and API key generation.
+
+Base URL: `https://api.telnyx.com`
 
 ## Flow
 
-Execute these steps in order.
-
-### Step 1: Get PoW Challenge
+### Step 1: Get Bot Challenge
 
 ```bash
-curl -s -X POST https://api.telnyx.com/v2/pow_signup_challenge
+curl -s -X POST https://api.telnyx.com/v2/bot_challenge
 ```
 
 **Response:**
 ```json
 {
   "data": {
-    "nonce": "<string>",
-    "algorithm": "sha256",
-    "leading_zero_bits": <int>,
-    "challenge_config": {},
+    "nonce": "<uuid>",
+    "problem": "<obfuscated math text> Round to N decimal places. Omit units.",
     "terms_and_conditions_url": "<url>",
     "privacy_policy_url": "<url>"
   }
 }
 ```
 
-Save all returned fields — they are needed in subsequent steps.
+Save all fields.
 
-**`algorithm`** indicates which hash function to use. Currently `"sha256"` or `"scrypt"`. Future algorithms may be added; use the existing implementations as a reference if you encounter one.
+### Step 2: Solve the Challenge
 
-**`challenge_config`** carries algorithm-specific parameters. For SHA-256 it is empty (`{}`). For scrypt it contains `{"n": <int>, "r": <int>, "p": <int>}` — pass these to the solver.
+The `problem` field contains an obfuscated college-level math problem. The rounding instruction at the end is unobfuscated.
 
-### Step 2: Solve Proof of Work
-
-> ⚠️ **Warning:** Solving the proof of work challenge is CPU-intensive and can take over a minute depending on the difficulty. Attempting to solve it on the main bot thread may cause the bot to become unresponsive for the duration. Always run the solver on a separate agent, worker thread, or background process.
-
-Two solvers are available. The Python solver is the default and works out of the box on most platforms. The C solver is an optional opt-in for users who need maximum speed (typically 10–50x faster than Python).
-
-#### Python Solver (default)
-
-Use the included `pow_solver.py` script:
-
-```bash
-python3 {baseDir}/scripts/pow_solver.py "<nonce>" <leading_zero_bits> [algorithm] [challenge_config_json]
-```
-
-The script outputs the integer solution to stdout. It finds a value `i` where `hash(nonce + str(i))` has at least `leading_zero_bits` leading zero bits.
-
-**Examples:**
-
-```bash
-# SHA-256 (default — challenge_config is empty or omitted)
-python3 {baseDir}/scripts/pow_solver.py "abc123..." 22 sha256 '{}'
-
-# scrypt
-python3 {baseDir}/scripts/pow_solver.py "abc123..." 16 scrypt '{"n": 4096, "r": 8, "p": 1}'
-```
-
-> **macOS note for scrypt:** macOS ships Python linked against LibreSSL, which does not expose `hashlib.scrypt`. If you see an error about `hashlib.scrypt` not being available, install an OpenSSL-linked Python:
-> ```bash
-> brew install python   # then use /opt/homebrew/bin/python3
-> ```
-> Alternatively, run the solver on Linux, or use the C solver compiled against Homebrew OpenSSL (see below).
-
-#### C Solver (optional, faster)
-
-The C solver is **10–50x faster** than the Python solver and is useful when solving high-difficulty challenges or when latency matters. It is opt-in — compile it before use.
-
-**Prerequisites:**
-- A C99 compiler (`cc` / `gcc` / `clang`)
-- OpenSSL development headers (`libssl-dev` on Debian/Ubuntu, or `brew install openssl` on macOS)
-
-**Compile:**
-
-```bash
-cd {baseDir}/scripts
-make
-```
-
-The Makefile automatically detects the OpenSSL installation:
-- **macOS with Homebrew OpenSSL:** `make` auto-finds `/opt/homebrew/opt/openssl`. Both SHA-256 and scrypt are supported.
-- **macOS with system LibreSSL only:** SHA-256 works; scrypt is disabled with a clear error message. Install Homebrew OpenSSL for scrypt support.
-- **Linux:** Both SHA-256 and scrypt work with the system OpenSSL.
-
-To specify an OpenSSL prefix manually:
-```bash
-make OPENSSL_PREFIX=/usr/local/opt/openssl
-```
-
-**Run:**
-
-```bash
-# SHA-256 (default)
-./{baseDir}/scripts/pow_solver "abc123..." 22
-
-# scrypt
-./{baseDir}/scripts/pow_solver "abc123..." 16 scrypt '{"n":4096,"r":8,"p":1}'
-```
-
-The interface is identical to the Python solver — same argument order, same stdout output, same stderr progress dots.
-
-**Fallback:** If compilation fails or scrypt is unavailable, fall back to the Python solver. The Python solver is always the safe default.
-
-**Future algorithms:** If the server returns an `algorithm` value not listed above, use the SHA-256 and scrypt implementations in `pow_solver.py` as a reference. The loop structure is always the same — only the hash primitive and `challenge_config` parameters change.
+- Read through the obfuscation — letters substituted with lookalike symbols, mixed case, injected delimiters. The math structure is intact.
+- Compute the answer and round to the specified number of decimal places.
+- Output a single numeric value.
 
 ### Step 3: Submit Bot Signup
 
-**Ask the user for their email address** before making this request.
+**Ask the user for their email address first.**
 
 ```bash
 curl -s -X POST https://api.telnyx.com/v2/bot_signup \
   -H "Content-Type: application/json" \
   -d '{
-    "pow_nonce": "<nonce from step 1>",
-    "pow_solution": "<solution from step 2>",
+    "bot_challenge_nonce": "<nonce from step 1>",
+    "bot_challenge_answer": "<numeric answer from step 2>",
     "terms_and_conditions_url": "<from step 1>",
     "privacy_policy_url": "<from step 1>",
     "email": "<user email>",
@@ -130,41 +59,31 @@ curl -s -X POST https://api.telnyx.com/v2/bot_signup \
 
 > **Note:** You must accept the terms of service to register with Telnyx. You must indicate this acceptance by supplying `"terms_of_service": true` as a parameter on the request. The API will reject the request with a `400 Bad Request` if this field is missing or set to any value other than `true`.
 
-**Response:** Success message. A sign-in link is sent to the provided email.
+**Response:** A sign-in link is sent to the provided email.
 
-### Step 4: Get Session Token from Email
+### Step 4: Get Session Token
 
-Wait 10–30 seconds for the verification email to arrive.
+Wait 10–30 seconds for the verification email.
 
-#### Path A: Agent Has Email Access
+#### With email access
 
-If you have email access, search for a message with subject **"Your Single Use Telnyx Portal sign-in link"**, extract the single-use URL from the body, and GET it:
+Search for subject **"Your Single Use Telnyx Portal sign-in link"**, extract the single-use URL:
 
 ```bash
-curl -s -L "<single-use-link-from-email>"
+curl -s -L "<single-use-link>"
 ```
 
-The response (or redirect) provides a temporary **session token**.
+The redirect provides a temporary session token.
 
-#### Path B: No Email Access
+#### Without email access
 
-If you do **not** have email access, ask the user:
-
-> Please check your email for a message from Telnyx with the subject **"Your Single Use Telnyx Portal sign-in link"**. Copy the sign-in link from the email and paste it here.
->
-> ⚠️ **The link is single-use.** Do not click it in your browser first — once opened, it cannot be reused. Copy the URL directly and paste it here without visiting it.
-
-Once the user provides the link, make a GET request to it:
+Ask the user to paste the sign-in link from their email (do not click it — single-use):
 
 ```bash
 curl -s -L "<link-from-user>"
 ```
 
-The response (or redirect) provides a temporary **session token**.
-
-#### Resend Magic Link
-
-If the verification email did not arrive or the link expired, resend it:
+#### Resend
 
 ```bash
 curl -s -X POST https://api.telnyx.com/v2/bot_signup/resend_magic_link \
@@ -172,16 +91,7 @@ curl -s -X POST https://api.telnyx.com/v2/bot_signup/resend_magic_link \
   -d '{"email": "<user email>"}'
 ```
 
-**Response:**
-```json
-{
-  "data": {
-    "message": "If an account with that email exists, a new magic link has been sent."
-  }
-}
-```
-
-**Rate limiting:** Max 3 resends per account, with a 60-second cooldown between resends. The endpoint always returns 200 OK regardless of whether the email exists, the retry cap is exceeded, or the cooldown is active (to prevent email enumeration).
+Max 3 resends, 60s cooldown. Always returns 200.
 
 ### Step 5: Create API Key
 
@@ -202,10 +112,10 @@ curl -s -X POST https://api.telnyx.com/v2/api_keys \
 }
 ```
 
-The `data.api_key` value is the permanent API key for the new account. Present it to the user and advise them to store it securely.
+`data.api_key` is the permanent API key. Present to the user.
 
 ## Notes
 
-- The PoW challenge is a spam-prevention mechanism. Solving is CPU-intensive and may take a while depending on the algorithm and difficulty.
+- The bot challenge presents obfuscated college-level math problems drawn from a managed pool. Read through the obfuscation and compute the answer — no external solver needed.
 - The single-use sign-in link expires quickly — retrieve and use it promptly.
-- Email access is **optional**. The skill works with or without it — if unavailable, the user is prompted to paste the link manually.
+- Email access is **optional**. If unavailable, prompt the user to paste the link manually.
