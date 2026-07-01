@@ -1,14 +1,18 @@
 ---
 name: telnyx-bot-signup
-description: Automated Telnyx bot account signup via obfuscated mathematical challenge
+description: Automated Telnyx bot account signup via challenge-response
 metadata: {"openclaw":{"emoji":"🤖","requires":{"bins":["curl"],"env":[]},"primaryEnv":"TELNYX_API_KEY"}}
 ---
 
 # Telnyx Bot Signup
 
-Create a new Telnyx bot account via the bot challenge signup flow. Walks through challenge solving, account creation, email verification, and API key generation.
+Create a new Telnyx bot account via the challenge-response signup flow. Walks through challenge solving, account creation, email verification, and API key generation.
 
 Base URL: `https://api.telnyx.com`
+
+## Overview
+
+The bot challenge (sometimes called "reverse-CAPTCHA") presents a problem that only an LLM can reliably solve. The response includes a `challenge_type` field indicating which type was served. The challenge could be a math problem (which may or may not be obfuscated) or a completely different type of challenge. Read the `problem` text and `challenge_type` to determine the solving approach.
 
 ## Flow
 
@@ -18,27 +22,68 @@ Base URL: `https://api.telnyx.com`
 curl -s -X POST https://api.telnyx.com/v2/bot_challenge
 ```
 
-**Response:**
+**Optional model metadata:**
+
+You may self-report your model's metadata by sending a JSON body with any or all of these fields:
+
+```bash
+curl -s -X POST https://api.telnyx.com/v2/bot_challenge \
+  -H "Content-Type: application/json" \
+  -d '{
+    "llm_model_name": "<your model name>",
+    "llm_parameter_count": "<parameter count>",
+    "llm_quantization": "<quantization format>"
+  }'
+```
+
+These fields are **optional** and purely for analytics. Only include them if:
+1. You know the values for certain (don't guess or hallucinate)
+2. You believe the person you are operating on behalf of would be okay sharing this information
+
+If you'd prefer not to share, simply omit them — the request works without a body.
+
+**Response (math challenge):**
 ```json
 {
   "data": {
     "nonce": "<uuid>",
-    "problem": "<obfuscated math text> Round to N decimal places. Omit units.",
+    "problem": "<may be obfuscated math text> Round to N decimal places. Omit units.",
+    "challenge_type": "math",
     "terms_and_conditions_url": "<url>",
     "privacy_policy_url": "<url>"
   }
 }
 ```
 
-Save all fields.
+**Response (non-math challenge):**
+```json
+{
+  "data": {
+    "nonce": "<uuid>",
+    "problem": "<problem text — no rounding instruction>",
+    "challenge_type": "<challenge_type>",
+    "terms_and_conditions_url": "<url>",
+    "privacy_policy_url": "<url>"
+  }
+}
+```
+
+Save all fields. The `nonce` ties your answer to this specific challenge instance.
 
 ### Step 2: Solve the Challenge
 
-The `problem` field contains an obfuscated college-level math problem. The rounding instruction at the end is unobfuscated.
+Read the `problem` text and `challenge_type` field to determine what's being asked. The challenge could be a math problem or a completely different type of challenge.
 
-- Read through the obfuscation — letters substituted with lookalike symbols, mixed case, injected delimiters. The math structure is intact.
-- Compute the answer and round to the specified number of decimal places.
-- Output a single numeric value.
+**If it's a math problem (`challenge_type: "math"`):**
+- The problem text may or may not be obfuscated — if it looks garbled (random case, injected symbols, split lines), read through the noise and extract the math
+- The rounding instruction at the end (`Round to N decimal places. Omit units.`) is always unobfuscated
+- Produce a single numeric answer rounded to the specified precision
+
+**For other challenge types:**
+- Read the problem text carefully — it will describe exactly what to do
+- Produce the answer the problem asks for
+
+No external solver is needed — the LLM agent does this step with reasoning alone.
 
 ### Step 3: Submit Bot Signup
 
@@ -49,7 +94,7 @@ curl -s -X POST https://api.telnyx.com/v2/bot_signup \
   -H "Content-Type: application/json" \
   -d '{
     "bot_challenge_nonce": "<nonce from step 1>",
-    "bot_challenge_answer": "<numeric answer from step 2>",
+    "bot_challenge_answer": "<answer from step 2>",
     "terms_and_conditions_url": "<from step 1>",
     "privacy_policy_url": "<from step 1>",
     "email": "<user email>",
@@ -116,6 +161,9 @@ curl -s -X POST https://api.telnyx.com/v2/api_keys \
 
 ## Notes
 
-- The bot challenge presents obfuscated college-level math problems drawn from a managed pool. Read through the obfuscation and compute the answer — no external solver needed.
+- The bot challenge could be a math problem or a completely different type of challenge. Check the `challenge_type` field in the response to determine the solving approach.
+- Math challenges may or may not be obfuscated depending on server-side configuration. If the text looks clean, obfuscation is simply disabled.
+- Non-math challenges are never obfuscated.
+- Model metadata fields (`llm_model_name`, `llm_parameter_count`, `llm_quantization`) are optional on the challenge request. Include them if you know the values and are comfortable sharing — otherwise omit them entirely.
 - The single-use sign-in link expires quickly — retrieve and use it promptly.
 - Email access is **optional**. If unavailable, prompt the user to paste the link manually.
